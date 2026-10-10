@@ -4,14 +4,14 @@
 
 @plugin "daisyui/theme" {
   name: "light";
-  default: false;
+  default: true;
   prefersdark: false;
   color-scheme: "light";
   --color-base-100: oklch(98% 0.002 247.839);
   --color-base-200: oklch(96% 0.003 264.542);
   --color-base-300: oklch(92% 0.006 264.531);
   --color-base-content: oklch(21% 0.034 264.665);
-  --color-primary: #004aad;
+  --color-primary: #35b2b2;
   --color-primary-content: oklch(97% 0.021 166.113);
   --color-secondary: oklch(60% 0.25 292.717);
   --color-secondary-content: oklch(96% 0.016 293.756);
@@ -58,8 +58,7 @@ body {
   background: #f4f4f4;
 }
 
-.btn-brand,
-.btn-primary {
+.btn-brand {
   background-color: var(--brand-color);
   border-color: var(--brand-color);
   color: white;
