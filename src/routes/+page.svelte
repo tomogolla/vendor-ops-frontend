@@ -190,7 +190,7 @@
                             <span
                                 >Occupancy: <span
                                     class="font-medium text-base-content/80"
-                                    >32/40 Booths (93%)</span
+                                    >32/40 Booths (80%)</span
                                 ></span
                             >
                             <span
@@ -223,7 +223,7 @@
                             <span
                                 >Occupancy: <span
                                     class="font-medium text-base-content/80"
-                                    >28/40 Booths (93%)</span
+                                    >28/40 Booths (70%)</span
                                 ></span
                             >
                             <span
@@ -255,7 +255,7 @@
                             <span
                                 >Occupancy: <span
                                     class="font-medium text-base-content/80"
-                                    >40 Booths (78%)</span
+                                    >31/40 Booths (78%)</span
                                 ></span
                             >
                             <span
@@ -382,13 +382,5 @@
     h3 {
         font-size: 1rem;
         text-transform: uppercase;
-    }
-    .font-medium {
-        font-weight: 500;
-        font-size: 0.5rem;
-    }
-    .font-light {
-        font-weight: 300;
-        font-size: 0.5rem;
     }
 </style>
