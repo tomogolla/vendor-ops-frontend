@@ -42,7 +42,7 @@ The Good Flea Team`);
                 >Edit Vendor Details
                 </a>
                  <a
-                href="/customers"
+                href="/vendors"
                 class="btn btn-primary btn-sm text-xs font-semibold"
             >
                 Vendor List

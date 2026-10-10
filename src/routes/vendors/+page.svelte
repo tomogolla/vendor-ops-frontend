@@ -584,7 +584,7 @@
             <!-- row 1 -->
             <tr class="hover">
                 <th>1</th>
-                <td class="font-bold text-slate-900">Acme Corporation</td>
+                <td class="font-bold text-slate-900"><a href="/vendors/1" class="hover:underline">Acme Corporation</a></td>
                 <td>
                     <div class="text-sm font-medium">Cy Ganderton</div>
                     <div class="text-xs text-slate-400">cy@acme.com</div>
@@ -606,7 +606,7 @@
             <!-- row 2 -->
             <tr class="hover">
                 <th>2</th>
-                <td class="font-bold text-slate-900">Stark Industries</td>
+                <td class="font-bold text-slate-900"><a href="/vendors/2" class="hover:underline">Stark Industries</a></td>
                 <td>
                     <div class="text-sm font-medium">Hart Hagerty</div>
                     <div class="text-xs text-slate-400">hart@stark.com</div>
@@ -627,7 +627,7 @@
             <!-- row 3 -->
             <tr class="hover">
                 <th>3</th>
-                <td class="font-bold text-slate-900">Wayne Enterprises</td>
+                <td class="font-bold text-slate-900"><a href="/vendors/3" class="hover:underline">Wayne Enterprises</a></td>
                 <td>
                     <div class="text-sm font-medium">Brice Swyre</div>
                     <div class="text-xs text-slate-400">brice@wayne.co</div>

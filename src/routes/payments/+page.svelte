@@ -24,7 +24,7 @@
             <th>1</th>
             <td class="font-mono font-medium text-xs">
                     <a 
-                        href="/invoices/#2003" 
+                        href="/payments/2003" 
                         class="text-[#35b2b2] hover:underline font-semibold focus:outline-none focus:ring-1 focus:ring-[#35b2b2] rounded-xs"
                     >
                         #2003
@@ -43,7 +43,14 @@
         <!-- row 2 -->
         <tr>
             <th>2</th>
-            <td class="font-mono font-medium text-xs">#2004</td>
+            <td class="font-mono font-medium text-xs">
+                    <a 
+                        href="/payments/2004" 
+                        class="text-[#35b2b2] hover:underline font-semibold focus:outline-none focus:ring-1 focus:ring-[#35b2b2] rounded-xs"
+                    >
+                        #2004
+                    </a>
+                </td>
             <td class="whitespace-nowrap font-medium">Hart Hagerty</td>
             <td>—</td>
             <td>2026-10-20</td>
@@ -57,7 +64,14 @@
         <!-- row 3 -->
         <tr>
             <th>3</th>
-            <td class="font-mono font-medium text-xs">#2005</td>
+            <td class="font-mono font-medium text-xs">
+                    <a 
+                        href="/payments/2005" 
+                        class="text-[#35b2b2] hover:underline font-semibold focus:outline-none focus:ring-1 focus:ring-[#35b2b2] rounded-xs"
+                    >
+                        #2005
+                    </a>
+                </td>
             <td class="whitespace-nowrap font-medium">Brice Swyre</td>
             <td>2026-10-05</td>
             <td>2026-10-05</td>
