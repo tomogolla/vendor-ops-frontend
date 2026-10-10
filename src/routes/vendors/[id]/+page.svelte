@@ -37,8 +37,8 @@ The Good Flea Team`);
 
             <!-- Back Button Link (Right Side) -->
              <div class="flex gap-2">
-                 <a
-                    
+                 <button
+                    type="button"
                     class="btn btn-primary btn-sm text-xs font-semibold"
                     onclick={() => {
                         const modal = document.getElementById("my_modal_3");
@@ -46,7 +46,7 @@ The Good Flea Team`);
                             modal.showModal();
                     }}
                 >Edit Vendor Details
-                </a>
+                </button>
                  <a
                 href="/vendors"
                 class="btn btn-primary btn-sm text-xs font-semibold"
@@ -175,10 +175,10 @@ The Good Flea Team`);
             <div class="card-body">
                 <h4 class="card-title">EMAIL SEQUENCE ACTIONS</h4>
                 <ul class="menu menu-sm rounded-box w-56 p-0">
-                    <li><a>Welcome to The Good Flea</a></li>
-                    <li><a>What Kind of Vendors We Are Looking For</a></li>
-                    <li><a>How the Application Process Works</a></li>
-                    <li><a>Apply for Upcoming Weekends</a></li>
+                    <li><button type="button">Welcome to The Good Flea</button></li>
+                    <li><button type="button">What Kind of Vendors We Are Looking For</button></li>
+                    <li><button type="button">How the Application Process Works</button></li>
+                    <li><button type="button">Apply for Upcoming Weekends</button></li>
                 </ul>
             </div>
         </div>
@@ -230,12 +230,12 @@ The Good Flea Team`);
                 <div class="card-body margin-y-3">
                     <h4 class="card-title">QUICK ACTIONS</h4>
                     <ul class="menu menu-sm rounded-box w-56 p-0">
-                        <li><a>Assign booth space</a></li>
-                        <li><a>Send Email</a></li>
-                        <li><a>Add vendor to Call List</a></li>
-                        <li><a>Remove vendor from call list</a></li>
-                        <li><a>Add vendor to market weekend</a></li>
-                        <li><a>Flag for suspension</a></li>
+                        <li><button type="button">Assign booth space</button></li>
+                        <li><button type="button">Send Email</button></li>
+                        <li><button type="button">Add vendor to Call List</button></li>
+                        <li><button type="button">Remove vendor from call list</button></li>
+                        <li><button type="button">Add vendor to market weekend</button></li>
+                        <li><button type="button">Flag for suspension</button></li>
                     </ul>
                 </div>
             </div>
@@ -971,7 +971,7 @@ The Good Flea Team`);
         font-size: 0.75rem;
         font-weight: bold;
     }
-    .menu li a {
+    .menu li button {
         font-size: 0.75rem;
         text-decoration: underline;
         text-decoration-color: var(--brand-color);
@@ -986,8 +986,5 @@ The Good Flea Team`);
 
     tbody td {
         color: var(--brand-color);
-    }
-    h2 {
-        text-transform: uppercase;
     }
 </style>

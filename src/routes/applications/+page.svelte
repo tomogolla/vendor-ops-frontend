@@ -15,7 +15,7 @@
                     <fieldset class="fieldset">
                         <legend class="fieldset-legend">Pick a file</legend>
                         <input type="file" class="file-input" />
-                        <label class="label">Max size 2MB</label>
+                        <p class="label">Max size 2MB</p>
                     </fieldset>
                     <div class="modal-action">
                         <form method="dialog">

@@ -91,9 +91,9 @@
                 <div class="card-body margin-y-3">
                     <h4 class="card-title">QUICK ACTIONS</h4>
                     <ul class="menu menu-sm rounded-box w-56 p-0">
-                        <li><a>Assign brand</a></li>
-                        <li><a>Send payment receipt to customer</a></li>
-                        <li><a>Send payment reminder</a></li>
+                        <li><button type="button">Assign brand</button></li>
+                        <li><button type="button">Send payment receipt to customer</button></li>
+                        <li><button type="button">Send payment reminder</button></li>
                     </ul>
                 </div>
             </div>

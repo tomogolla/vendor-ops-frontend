@@ -263,7 +263,7 @@
         name="my_tabs_2"
         class="tab checked:border-[#35b2b2]"
         aria-label="October 17 & 18"
-        checked="checked"
+        checked
     />
     <div class="tab-content border-base-300 bg-base-100 p-1">
        <div class="grid grid-cols-5 gap-2 w-full">
