@@ -1,4 +1,10 @@
-<script>
+<script lang="ts">
+    import type { PageProps } from './$types';
+
+    let { data }: PageProps = $props();
+    // TODO(decision): vendors vs customers — contact link assumes the same id until the data model is settled.
+    const contactHref = $derived(`/customers/${data.id}`);
+
     // Set your default content here
     let emailSubject = $state(
         "Welcome to The Good Flea! Your Application Has Been Approved",
@@ -26,7 +32,7 @@ The Good Flea Team`);
         >
             <!-- Vendor Name (Left Side) -->
             <span class="font-semibold text-sm text-base-content/70">
-                Vendor Name: <span class="text-base-content font-medium">Michael Moris</span>
+                Vendor Name: <span class="text-base-content font-medium">Michael Moris</span> <span class="text-base-content/50 font-mono text-xs">#{data.id}</span>
             </span>
 
             <!-- Back Button Link (Right Side) -->
@@ -58,7 +64,7 @@ The Good Flea Team`);
             <div class="pb-4">
                 <h4 class="text-sm font-semibold text-slate-900 mb-1">Contact Name/Customer Name</h4>
                 <p class="text-xs text-slate-500 leading-relaxed">
-                    <a href="/customers/123" class="font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-150 ease-in-out">Michael Moris</a>
+                    <a href={contactHref} class="font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-150 ease-in-out">Michael Moris</a>
                 </p>
 
             </div>

@@ -1,10 +1,18 @@
+<script lang="ts">
+    import type { PageProps } from './$types';
+
+    let { data }: PageProps = $props();
+    // Mock: invoices don't carry a customer id yet.
+    const customerId = '1';
+</script>
+
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
     <!-- Left Column (50% width on desktop) -->
     <div class="card bg-base-100 border border-base-200 shadow-sm p-3">
         <header class="bg-base-100 border-b border-base-200 ">
             <div class="flex items-center justify-between">
                 <h3 class="text-base font-bold text-base-content">
-                    INVOICE #2003
+                    INVOICE #{data.id}
                 </h3>
                 <span class="badge badge-sm badge-success font-medium"
                     >PAID</span
@@ -16,7 +24,7 @@
             <div class="pb-4">
                 <h4 class="text-sm font-semibold text-slate-900 mb-1">Customer Name</h4>
                 <p class="text-xs text-slate-500 leading-relaxed">
-                    <a href="/customers/123" class="font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-150 ease-in-out">Michael Moris</a>
+                    <a href={`/customers/${customerId}`} class="font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-150 ease-in-out">Michael Moris</a>
                 </p>
 
             </div>
