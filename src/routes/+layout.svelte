@@ -4,13 +4,12 @@
 	import tgfLogo from '#lib/assets/tgf-logo.svg';
 
 	let { children } = $props();
-	let drawerOpen = $state(false);
 </script>
 <svelte:head>
   <link rel="icon" href={tgfLogo} />
 </svelte:head>
 <div class="drawer lg:drawer-open">
-	<!-- Hidden checkbox controlling DaisyUI drawer state -->
+	<input id="app-drawer" type="checkbox" class="drawer-toggle" />
 
 	<div class="drawer-content flex flex-col min-h-screen">
 		<!-- Header Navbar -->

@@ -1,29 +1,3 @@
-<div class="drawer lg:drawer-open min-h-screen bg-base-200">
-  <!-- Drawer Toggle Checkbox for Mobile -->
-  <input id="app-drawer" type="checkbox" class="drawer-toggle" />
-
-  <!-- ================= MAIN CONTENT AREA ================= -->
-  <div class="drawer-content flex flex-col">
-    
-    <!-- Mobile Top Navigation Bar (Hidden on Desktop) -->
-    <header class="navbar bg-base-100 border-b border-base-200 lg:hidden px-4 sticky top-0 z-30">
-      <div class="flex-none">
-        <label for="app-drawer" class="btn btn-square btn-ghost drawer-button" aria-label="open sidebar">
-          <svg class="w-6 h-6 stroke-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-          </svg>
-        </label>
-      </div>
-      <div class="flex-1 px-2 font-bold text-lg text-base-content">
-        The Good Flea CRM
-      </div>
-    </header>
-
-    <!-- Page Content Slot -->
-    
-
-  </div>
-
   <!-- ================= SIDEBAR NAVIGATION ================= -->
   <div class="drawer-side z-40">
     <label for="app-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
@@ -136,4 +110,3 @@
 
     </aside>
   </div>
-</div>
