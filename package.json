@@ -16,8 +16,7 @@
 		"@sveltejs/kit": "^3.0.0",
 		"@sveltejs/vite-plugin-svelte": "^7.2.0",
 		"@tailwindcss/vite": "^4.3.3",
-		"flowbite": "^4.0.2",
-		"flowbite-svelte": "^1.33.1",
+		"daisyui": "^5.7.47",
 		"svelte": "^5.57.1",
 		"svelte-check": "^4.6.0",
 		"tailwindcss": "^4.3.3",
@@ -27,9 +26,5 @@
 	"imports": {
 		"#lib": "./src/lib/index.js",
 		"#lib/*": "./src/lib/*"
-	},
-	"dependencies": {
-		"daisyui": "^5.7.47",
-		"flowbite-svelte-icons": "^3.1.0"
 	}
 }
