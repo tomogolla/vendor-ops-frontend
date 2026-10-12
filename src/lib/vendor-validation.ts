@@ -1,7 +1,8 @@
-import type { Vendor, VendorInput, VendorStatus } from '#lib/vendor-store.ts';
+import { MAX_CALL_ATTEMPTS } from '#lib/options.ts';
+import type { CallLog, Vendor, VendorInput, VendorStatus } from '#lib/vendor-store.ts';
 
 /** `contact` covers the lead rule "at least one of email, phone or Instagram". */
-export type FieldName = keyof VendorInput | 'contact';
+export type FieldName = keyof VendorInput | 'contact' | 'callAttempts' | 'interestLevel';
 export type FieldErrors = Partial<Record<FieldName, string>>;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -56,8 +57,21 @@ export function formatErrors(input: VendorInput): FieldErrors {
 	return errors;
 }
 
+const inRange = (value: number, max: number) => Number.isInteger(value) && value >= 0 && value <= max;
+
+export function callErrors(call: CallLog): FieldErrors {
+	const errors: FieldErrors = {};
+	if (!inRange(call.callAttempts, MAX_CALL_ATTEMPTS)) {
+		errors.callAttempts = `Call attempts must be a whole number from 0 to ${MAX_CALL_ATTEMPTS}.`;
+	}
+	if (call.interestLevel !== null && !inRange(call.interestLevel, 5)) {
+		errors.interestLevel = 'Interest level must be a whole number from 0 to 5.';
+	}
+	return errors;
+}
+
 export function validateVendor(input: VendorInput, status: VendorStatus): FieldErrors {
-	return { ...formatErrors(input), ...requiredErrors(input, status) };
+	return { ...formatErrors(input), ...callErrors(input.call), ...requiredErrors(input, status) };
 }
 
 export function isIncomplete(vendor: Vendor): boolean {

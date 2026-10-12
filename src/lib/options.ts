@@ -68,3 +68,14 @@ export const marketWeekends = [
 	'December 26 & 27'
 ] as const;
 export type MarketWeekend = (typeof marketWeekends)[number];
+
+export const callOutcomes = [
+	'Interested',
+	'Not Qualified',
+	'Callback Requested',
+	'No Answer',
+	'Wrong Number'
+] as const;
+export type CallOutcome = (typeof callOutcomes)[number];
+
+export const MAX_CALL_ATTEMPTS = 5;

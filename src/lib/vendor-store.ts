@@ -1,12 +1,14 @@
 // Prototype client-side store. Every mutation is async and returns plain data so the
 // implementations can be swapped for Django API calls without changing callers.
 import { get, writable, type Readable } from 'svelte/store';
-import type {
-	BoothSize,
-	BusinessRegistration,
-	Category,
-	CommitmentLevel,
-	LiabilityInsurance
+import {
+	MAX_CALL_ATTEMPTS,
+	type BoothSize,
+	type BusinessRegistration,
+	type CallOutcome,
+	type Category,
+	type CommitmentLevel,
+	type LiabilityInsurance
 } from '#lib/options.ts';
 
 export type VendorStatus =
@@ -59,6 +61,34 @@ export type StatusChange = {
 	note?: string;
 };
 
+/** Latest call details and call-script answers. Overwritten on each logged call (no history yet). */
+export type CallLog = {
+	callAttempts: number;
+	/** 0–5, null when not rated. */
+	interestLevel: number | null;
+	callOutcome: CallOutcome | '';
+	lastCalledAt: string | null;
+	challenges: string;
+	locationPainPoints: string;
+	revenueConsistency: string;
+	vendorReaction: string;
+	objectionNotes: string;
+};
+
+export function emptyCallLog(): CallLog {
+	return {
+		callAttempts: 0,
+		interestLevel: null,
+		callOutcome: '',
+		lastCalledAt: null,
+		challenges: '',
+		locationPainPoints: '',
+		revenueConsistency: '',
+		vendorReaction: '',
+		objectionNotes: ''
+	};
+}
+
 export type Vendor = {
 	id: string;
 	createdAt: string;
@@ -86,6 +116,7 @@ export type Vendor = {
 	proposedBoothSize: BoothSize | '';
 	requestedWeekends: string[];
 	needsTent: boolean;
+	call: CallLog;
 	/** Read-only: will be derived from bookings once the backend exists. */
 	readonly bookedDates: readonly string[];
 	/** Read-only: will be derived from bookings once the backend exists. */
@@ -127,7 +158,8 @@ export function emptyVendorInput(): VendorInput {
 		liabilityInsurance: 'Not answered',
 		proposedBoothSize: '',
 		requestedWeekends: [],
-		needsTent: false
+		needsTent: false,
+		call: emptyCallLog()
 	};
 }
 
@@ -143,20 +175,58 @@ export function toVendorInput(vendor: Vendor): VendorInput {
 		marketsAttended: _marketsAttended,
 		...input
 	} = vendor;
-	return { ...input, tags: [...input.tags], requestedWeekends: [...input.requestedWeekends] };
+	return {
+		...input,
+		tags: [...input.tags],
+		requestedWeekends: [...input.requestedWeekends],
+		call: { ...input.call }
+	};
 }
+
+export function normaliseCallLog(call: CallLog, now = new Date().toISOString()): CallLog {
+	const text = (value: string) => value.trim();
+	return {
+		...call,
+		callAttempts: call.callAttempts ?? 0,
+		interestLevel: call.interestLevel ?? null,
+		lastCalledAt: call.lastCalledAt ?? (call.callOutcome ? now : null),
+		challenges: text(call.challenges),
+		locationPainPoints: text(call.locationPainPoints),
+		revenueConsistency: text(call.revenueConsistency),
+		vendorReaction: text(call.vendorReaction),
+		objectionNotes: text(call.objectionNotes)
+	};
+}
+
+/** Vendors with an open call task: new leads/applications not yet reached. */
+export function needsCall(vendor: Vendor): boolean {
+	if (vendor.status !== 'lead' && vendor.status !== 'applied') return false;
+	const { callOutcome, callAttempts } = vendor.call;
+	if (callOutcome === '' || callOutcome === 'Callback Requested') return true;
+	return callOutcome === 'No Answer' && callAttempts < MAX_CALL_ATTEMPTS;
+}
+
+export function neverCalled(vendor: Vendor): boolean {
+	return vendor.call.callOutcome === '' && vendor.call.lastCalledAt === null && !vendor.call.callAttempts;
+}
+
+/** Status a call outcome suggests; the profile offers it, it is never applied automatically. */
+export const outcomeSuggestions: Partial<Record<CallOutcome, VendorStatus>> = {
+	Interested: 'applied',
+	'Not Qualified': 'declined'
+};
 
 export const normaliseEmail = (email: string) => email.trim().toLowerCase();
 export const normaliseInstagram = (handle: string) => handle.replace(/[@\s]/g, '').toLowerCase();
 
-const STORAGE_KEY = 'tgf-vendors-v2';
+const STORAGE_KEY = 'tgf-vendors-v3';
 const browser = typeof window !== 'undefined';
 
 function seed(
 	id: string,
 	createdAt: string,
 	path: VendorStatus[],
-	fields: Partial<VendorInput> & Pick<VendorInput, 'brandName'>,
+	fields: Partial<Omit<VendorInput, 'call'>> & Pick<VendorInput, 'brandName'> & { call?: Partial<CallLog> },
 	readOnly: Pick<Vendor, 'bookedDates' | 'marketsAttended'> = { bookedDates: [], marketsAttended: [] }
 ): Vendor {
 	const at = `${createdAt}T12:00:00.000Z`;
@@ -164,6 +234,7 @@ function seed(
 	return {
 		...emptyVendorInput(),
 		...fields,
+		call: { ...emptyCallLog(), ...fields.call },
 		...readOnly,
 		id,
 		createdAt: at,
@@ -182,6 +253,7 @@ const seedVendors: Vendor[] = [
 		{
 			firstName: 'Cy',
 			lastName: 'Ganderton',
+			call: { callAttempts: 1, interestLevel: 5, callOutcome: 'Interested', lastCalledAt: '2026-08-02T15:00:00.000Z', vendorReaction: 'Very keen; wants a corner booth.' },
 			brandName: 'Acme Corporation',
 			email: 'cy@acme.com',
 			phone: '(555) 123-4567',
@@ -209,6 +281,7 @@ const seedVendors: Vendor[] = [
 		{
 			firstName: 'Hart',
 			lastName: 'Hagerty',
+			call: { callAttempts: 1, interestLevel: 4, callOutcome: 'Interested', lastCalledAt: '2026-08-03T16:00:00.000Z' },
 			brandName: 'Stark Industries',
 			email: 'hart@stark.com',
 			phone: '(555) 987-6543',
@@ -231,6 +304,7 @@ const seedVendors: Vendor[] = [
 	seed('3', '2026-09-03', ['lead', 'applied', 'in_review'], {
 		firstName: 'Brice',
 		lastName: 'Swyre',
+		call: { callAttempts: 2, interestLevel: 4, callOutcome: 'Interested', lastCalledAt: '2026-09-05T14:30:00.000Z', revenueConsistency: 'Looking for predictable weekend revenue through the holidays.' },
 		brandName: 'Wayne Enterprises',
 		email: 'brice@wayne.co',
 		phone: '(555) 555-5555',
@@ -257,6 +331,7 @@ const seedVendors: Vendor[] = [
 	seed('5', '2026-10-04', ['lead', 'applied'], {
 		firstName: 'Lillian',
 		lastName: 'Park',
+		call: { callAttempts: 1, interestLevel: 3, callOutcome: 'Callback Requested', lastCalledAt: '2026-10-06T17:00:00.000Z', objectionNotes: 'Wants to confirm booth pricing with a partner first.' },
 		brandName: 'Ember Wick Co.',
 		email: 'lillian@emberwick.example.com',
 		phone: '(555) 210-3344',
@@ -270,6 +345,7 @@ const seedVendors: Vendor[] = [
 	seed('6', '2026-09-20', ['lead', 'applied', 'in_review', 'waitlisted'], {
 		firstName: 'Marcus',
 		lastName: 'Bell',
+		call: { callAttempts: 1, interestLevel: 4, callOutcome: 'Interested', lastCalledAt: '2026-09-22T13:00:00.000Z' },
 		brandName: 'Second Spin Records',
 		email: 'marcus@secondspin.example.com',
 		phone: '(555) 678-9012',
@@ -287,6 +363,7 @@ const seedVendors: Vendor[] = [
 	seed('7', '2026-09-12', ['lead', 'applied', 'declined'], {
 		firstName: 'Dana',
 		lastName: 'Ruiz',
+		call: { callAttempts: 1, interestLevel: 2, callOutcome: 'Not Qualified', lastCalledAt: '2026-09-13T15:00:00.000Z', challenges: 'Mostly mass-produced stock.' },
 		brandName: 'Fast Fashion Outlet',
 		email: 'dana@ffoutlet.example.com',
 		phone: '(555) 432-1098',
@@ -341,6 +418,7 @@ function build(
 		...input,
 		tags: [...input.tags],
 		requestedWeekends: [...input.requestedWeekends],
+		call: { ...input.call },
 		id,
 		createdAt: at,
 		updatedAt: at,

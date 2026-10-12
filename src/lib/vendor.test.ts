@@ -4,7 +4,11 @@ import {
 	canTransition,
 	emptyVendorInput,
 	getVendor,
+	emptyCallLog,
 	matchDuplicates,
+	needsCall,
+	neverCalled,
+	normaliseCallLog,
 	normaliseInstagram,
 	setStatus,
 	statusTransitions,
@@ -13,7 +17,7 @@ import {
 	type Vendor,
 	type VendorStatus
 } from '#lib/vendor-store.ts';
-import { isIncomplete, validateVendor } from '#lib/vendor-validation.ts';
+import { callErrors, isIncomplete, validateVendor } from '#lib/vendor-validation.ts';
 
 describe('status transitions', () => {
 	it('matches the agreed map exactly', () => {
@@ -136,5 +140,53 @@ describe('CSV parsing', () => {
 		expect(preview.duplicates[0].reason).toContain('row 2');
 		expect(preview.duplicates[1].reason).toContain('Acme Corporation');
 		expect(preview.invalid.map((row) => row.line)).toEqual([5, 6, 7]);
+	});
+});
+
+describe('call tasks', () => {
+	const withCall = (status: VendorStatus, call: Partial<ReturnType<typeof emptyCallLog>>): Vendor => ({
+		...getVendor('4')!,
+		status,
+		call: { ...emptyCallLog(), ...call }
+	});
+
+	it('opens a task for new leads and applications that have not been reached', () => {
+		expect(needsCall(withCall('lead', {}))).toBe(true);
+		expect(needsCall(withCall('applied', { callOutcome: 'Callback Requested', callAttempts: 1 }))).toBe(true);
+		expect(needsCall(withCall('lead', { callOutcome: 'No Answer', callAttempts: 4 }))).toBe(true);
+	});
+
+	it('closes the task once reached, out of attempts, or past the application stage', () => {
+		expect(needsCall(withCall('lead', { callOutcome: 'Interested', callAttempts: 1 }))).toBe(false);
+		expect(needsCall(withCall('lead', { callOutcome: 'No Answer', callAttempts: 5 }))).toBe(false);
+		expect(needsCall(withCall('in_review', {}))).toBe(false);
+	});
+
+	it('distinguishes never-called vendors', () => {
+		expect(neverCalled(withCall('lead', {}))).toBe(true);
+		expect(neverCalled(withCall('lead', { callOutcome: 'No Answer', callAttempts: 1 }))).toBe(false);
+	});
+
+	it('matches the seeded call list', () => {
+		expect(needsCall(getVendor('4')!)).toBe(true);
+		expect(needsCall(getVendor('5')!)).toBe(true);
+		expect(needsCall(getVendor('7')!)).toBe(false);
+	});
+
+	it('stamps call time and trims answers when an outcome is saved', () => {
+		const call = normaliseCallLog(
+			{ ...emptyCallLog(), callOutcome: 'Interested', challenges: '  parking  ' },
+			'2026-10-12T10:00:00.000Z'
+		);
+		expect(call).toMatchObject({ lastCalledAt: '2026-10-12T10:00:00.000Z', challenges: 'parking' });
+		expect(normaliseCallLog(emptyCallLog()).lastCalledAt).toBeNull();
+	});
+
+	it('validates attempt and interest ranges', () => {
+		expect(callErrors({ ...emptyCallLog(), callAttempts: 6, interestLevel: 2.5 })).toEqual({
+			callAttempts: expect.any(String),
+			interestLevel: expect.any(String)
+		});
+		expect(callErrors(emptyCallLog())).toEqual({});
 	});
 });
