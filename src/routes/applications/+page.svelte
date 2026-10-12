@@ -1,5 +1,6 @@
 <script lang="ts">
     import { page } from '$app/state';
+    import CsvImportDialog from '#lib/components/CsvImportDialog.svelte';
     import VendorTable from '#lib/components/VendorTable.svelte';
     import { statusLabels, vendors, type VendorStatus } from '#lib/vendor-store.ts';
 
@@ -23,7 +24,7 @@
         }))
     ]);
 
-    let importDialog: HTMLDialogElement | undefined = $state();
+    let importDialog: CsvImportDialog | undefined = $state();
 </script>
 
 <svelte:head><title>Applications · Vendor Ops</title></svelte:head>
@@ -37,21 +38,7 @@
             </button>
             <a href="/applications/new" class="btn btn-primary btn-sm text-xs font-semibold">New application</a>
         </div>
-        <dialog bind:this={importDialog} class="modal">
-            <div class="modal-box">
-                <h2>Import vendors CSV</h2>
-                <fieldset class="fieldset">
-                    <legend class="fieldset-legend">Pick a file</legend>
-                    <input type="file" class="file-input" />
-                    <p class="label">Max size 2MB</p>
-                </fieldset>
-                <div class="modal-action">
-                    <form method="dialog">
-                        <button class="btn btn-sm">Close</button>
-                    </form>
-                </div>
-            </div>
-        </dialog>
+        <CsvImportDialog bind:this={importDialog} />
     </header>
 
     <div class="flex flex-col gap-2 p-2">
