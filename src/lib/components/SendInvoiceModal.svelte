@@ -1,5 +1,15 @@
 <script lang="ts">
+    type Props = {
+        brandName?: string;
+        vendorName?: string;
+        email?: string;
+        /** Called when the send form is submitted (the dialog closes itself). */
+        onsend?: (details: { email: string; subject: string; body: string }) => void;
+    };
+    let { brandName = '', vendorName = '', email = '', onsend }: Props = $props();
+
     let dialog = $state<HTMLDialogElement>();
+    let recipient = $state('');
     let emailSubject = $state(
         "Welcome to The Good Flea! Your Application Has Been Approved",
     );
@@ -15,6 +25,7 @@ Best,
 The Good Flea Team`);
 
     export function showModal() {
+        recipient = email;
         dialog?.showModal();
     }
 </script>
@@ -48,6 +59,7 @@ The Good Flea Team`);
         <form
             method="dialog"
             class="p-6 space-y-5 max-h-[80vh] overflow-y-auto"
+            onsubmit={() => onsend?.({ email: recipient, subject: emailSubject, body: emailBody })}
         >
             <!-- First & Last Name Row -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -61,6 +73,7 @@ The Good Flea Team`);
                         id="first_name"
                         class="input input-bordered w-full"
                         placeholder="First Name"
+                        value={brandName}
                         required
                         disabled
                     />
@@ -76,6 +89,7 @@ The Good Flea Team`);
                         id="last_name"
                         class="input input-bordered w-full"
                         placeholder="Vendor Name"
+                        value={vendorName}
                         required
                         disabled
                     />
@@ -91,6 +105,7 @@ The Good Flea Team`);
                     id="email"
                     class="input input-bordered w-full"
                     placeholder="e.g. john@acme.com"
+                    bind:value={recipient}
                     required
                 />
             </fieldset>

@@ -1,187 +1,264 @@
 <script lang="ts">
     import type { PageProps } from './$types';
-    import ApproveVendorModal from '#lib/components/SendInvoiceModal.svelte';
+    import SendInvoiceModal from '#lib/components/SendInvoiceModal.svelte';
     import DocumentChecklist from '#lib/components/DocumentChecklist.svelte';
-    import { vendors } from '#lib/vendor-store.ts';
+    import StatusBadge from '#lib/components/StatusBadge.svelte';
+    import { formatDate, formatDateTime, instagramUrl } from '#lib/format.ts';
+    import {
+        canTransition,
+        setStatus,
+        statusLabels,
+        vendors,
+        type VendorStatus
+    } from '#lib/vendor-store.ts';
+    import { isIncomplete, requiredErrors } from '#lib/vendor-validation.ts';
 
     let { data }: PageProps = $props();
     // TODO(decision): vendors vs customers — contact link assumes the same id until the data model is settled.
     // Decision: vendors are separate from customers - a customer can be a vendor, but a vendor is not necessarily a customer. The contact link should point to the customer page for now, until the data model is settled.
     // Thought: an invoice billed to a vendor(under a brand name) might be paid by a different person i.e. shopify/Stripe might return different customer details (name and email) which should create an match task
     // an inoice id will still mark the vendor as paid for the billed products
-    
-    const contactHref = $derived(`/customers/${data.id}`);
-    let vendor = $derived($vendors.find((item) => item.id === data.id));
 
-    let approveModal: ApproveVendorModal | undefined = $state();
+    const contactHref = $derived(`/customers/${data.id}`);
+    const vendor = $derived($vendors.find((item) => item.id === data.id));
+    const missing = $derived(vendor && isIncomplete(vendor) ? Object.values(requiredErrors(vendor, vendor.status)) : []);
+
+    type Action = {
+        to: VendorStatus;
+        label: string;
+        kind: 'direct' | 'invoice' | 'confirm';
+        tone: string;
+    };
+    const accept: Action = { to: 'approved', label: 'Accept', kind: 'invoice', tone: 'btn-primary' };
+    const decline: Action = { to: 'declined', label: 'Decline', kind: 'confirm', tone: 'btn-error btn-outline' };
+    const review = (label: string): Action => ({ to: 'in_review', label, kind: 'direct', tone: 'btn-outline' });
+    const actionsByStatus: Record<VendorStatus, Action[]> = {
+        lead: [{ to: 'applied', label: 'Mark as applied', kind: 'direct', tone: 'btn-primary' }, review('Start review')],
+        applied: [review('Start review')],
+        in_review: [accept, { to: 'waitlisted', label: 'Waitlist', kind: 'confirm', tone: 'btn-neutral btn-outline' }, decline],
+        waitlisted: [accept, decline, review('Back to review')],
+        approved: [{ to: 'suspended', label: 'Flag for suspension', kind: 'confirm', tone: 'btn-error btn-outline' }],
+        suspended: [{ to: 'approved', label: 'Reinstate', kind: 'direct', tone: 'btn-primary' }],
+        declined: [review('Reopen')]
+    };
+    const actions = $derived(
+        vendor ? actionsByStatus[vendor.status].filter((action) => canTransition(vendor.status, action.to)) : []
+    );
+
+    let invoiceModal: SendInvoiceModal | undefined = $state();
+    let confirmDialog: HTMLDialogElement | undefined = $state();
+    let pending: Action | null = $state(null);
+    let note = $state('');
+    let busy = $state(false);
+    let actionError = $state('');
+
+    async function changeStatus(to: VendorStatus, statusNote?: string) {
+        busy = true;
+        actionError = '';
+        const result = await setStatus(data.id, to, statusNote);
+        busy = false;
+        if (!result.ok) actionError = result.message;
+        return result.ok;
+    }
+
+    function run(action: Action) {
+        actionError = '';
+        if (action.kind === 'invoice') {
+            invoiceModal?.showModal();
+        } else if (action.kind === 'confirm') {
+            pending = action;
+            note = '';
+            confirmDialog?.showModal();
+        } else {
+            changeStatus(action.to);
+        }
+    }
+
+    async function confirmPending(event: SubmitEvent) {
+        event.preventDefault();
+        if (!pending) return;
+        if (await changeStatus(pending.to, note)) confirmDialog?.close();
+    }
+
+    function invoiceSent() {
+        // TODO(backend): create the Shopify/Stripe invoice and send the acceptance email before approving.
+        changeStatus('approved');
+    }
 </script>
+
+{#snippet field(label: string, value: string | undefined)}
+    <div>
+        <dt class="text-xs font-semibold text-base-content/70">{label}</dt>
+        <dd class="text-sm text-base-content/90 whitespace-pre-line">{value || '—'}</dd>
+    </div>
+{/snippet}
+
+{#snippet section(title: string)}
+    <h2 class="col-span-full mt-2 border-b border-base-200 pb-1 text-xs font-bold uppercase tracking-wide text-base-content/60">{title}</h2>
+{/snippet}
+
+<svelte:head><title>{vendor?.brandName ?? 'Vendor'} · Vendor Ops</title></svelte:head>
 
 {#if vendor}
 <div class="rounded-box grid grid-cols-1 md:grid-cols-10 gap-4">
     <!-- Column 1 (70% width on desktop) -->
-    <div
-        class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden md:col-span-7"
-    >
-        <!-- Card Header -->
-        <div
-            class="bg-base-200/60 px-6 py-3 border-b border-base-200 flex items-center justify-between"
-        >
-            <!-- Vendor Name (Left Side) -->
-            <span class="font-semibold text-sm text-base-content/70">
-                Vendor: <span class="text-base-content font-medium">{vendor.brandName}</span> <span class="text-base-content/50 font-mono text-xs">#{vendor.id}</span>
-            </span>
-
-            <!-- Back Button Link (Right Side) -->
-             <div class="flex gap-2">
-                
-                 <a
-                href="/vendors"
-                class="btn btn-primary btn-sm text-xs font-semibold"
-            >
-                Vendor List
-            </a>
-             </div>
-        
-        </div>
-
-        <!-- Card Body -->
-        <div class="card-body">
-            <div class="w-full max-w-2xl mx-auto mt-3">
-            <!-- Row 1 -->
-            <div class="pb-4">
-                <h4 class="text-sm font-semibold text-slate-900 mb-1">Contact Name/Customer Name</h4>
-                <p class="text-xs text-slate-500 leading-relaxed">
-                    <a href={contactHref} class="font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-150 ease-in-out">{vendor.firstName} {vendor.lastName}</a>
-                </p>
-
-            </div>
-
-            <!-- Row 2 -->
-            <div class="pb-4">
-                <h4 class="text-sm font-semibold text-slate-900 mb-1">Reference links</h4>
-                    <p class="text-xs text-slate-500">Instagram: {vendor.instagram || '—'}</p>
-                    <p class="text-xs text-slate-500">Website: {vendor.website || '—'}</p>
-            
-            </div>
-
-            <!-- Row 3 -->
-            <div class="pb-4">
-                <h4 class="text-sm font-semibold text-slate-900 mb-1">Brand Name</h4>
-                <p class="text-xs text-slate-500 leading-relaxed">{vendor.brandName}</p>
-            </div>
-
-            <!-- Row 4 -->
-            <div class="pb-4">
-                <h4 class="text-sm font-semibold text-slate-900 mb-1">Contact Email</h4>
-                <p class="text-xs text-slate-500 leading-relaxed">{vendor.email}</p>
-            </div>
-
-            <!-- Row 6 -->
-            <div class="pb-4">
-                <h4 class="text-sm font-semibold text-slate-900 mb-1">Phone</h4>
-                <p class="text-xs text-slate-500 leading-relaxed">{vendor.phone}</p>
-            </div>
-
-            <!-- Row 6 -->
-            <div class="pb-4">
-                <h4 class="text-sm font-semibold text-slate-900 mb-1">Category</h4>
-                <p class="text-xs text-slate-500 leading-relaxed">{vendor.category}</p>
-            </div>
-
-            <div class="pb-4">
-                <h4 class="text-sm font-semibold text-slate-900 mb-1">Lead Source</h4>
-                <p class="text-xs text-slate-500 leading-relaxed">{vendor.leadSource || '—'}</p>
-            </div>
-
-            <div class="pb-4">
-                <h4 class="text-sm font-semibold text-slate-900 mb-1">Tags</h4>
-                <div class="flex flex-wrap gap-1">
-                    {#if vendor.tags.length}
-                        {#each vendor.tags as tag}<span class="badge badge-sm">{tag}</span>{/each}
-                    {:else}
-                        <span class="text-xs text-slate-500">—</span>
-                    {/if}
-                </div>
-            </div>
-
-            <!-- Row 6 -->
-            <div class="pb-4">
-                <h4 class="text-sm font-semibold text-slate-900 mb-1">About Brand</h4>
-                <p class="text-xs text-slate-500 leading-relaxed">{vendor.aboutBrand || '—'}</p>
-            </div>
-
-            <!-- Row 6 -->
-            <div class="pb-4">
-                <h4 class="text-sm font-semibold text-slate-900 mb-1">Objectives of joining The Good Flea</h4>
-                <p class="text-xs text-slate-500 leading-relaxed">{vendor.objectives || '—'}</p>
-            </div>
-
-            <!-- Row 6 -->
-            <div class="pb-4">
-                <h4 class="text-sm font-semibold text-slate-900 mb-1">Proposed booth dimensions</h4>
-                <p class="text-xs text-slate-500 leading-relaxed">{vendor.proposedBoothSize || '—'}</p>
-            </div>
-            <!-- Row 6 -->
-            <div class="pb-4">
-                <h4 class="text-sm font-semibold text-slate-900 mb-1">Booked dates</h4>
-                <p class="text-xs text-slate-500 leading-relaxed">{vendor.bookedDates.join(', ') || '—'}</p>
-            </div>
-            <div class="pb-4">
-                <h4 class="text-sm font-semibold text-slate-900 mb-1">Other Markets</h4>
-                <p class="text-xs text-slate-500 leading-relaxed">{vendor.otherMarkets || '—'}</p>
-            </div>
-
-            <!-- Row 6 -->
-            <div class="pb-4">
-                <h4 class="text-sm font-semibold text-slate-900 mb-1">Notes</h4>
-                <p class="text-xs text-slate-500 leading-relaxed">{vendor.notes || '—'}</p>
-            </div>
-            <!-- Row 6 -->
-            <div class="pb-4">
-                <h4 class="text-sm font-semibold text-slate-900 mb-1">Markets attended</h4>
-                {#if vendor.marketsAttended.length}
-                    {#each vendor.marketsAttended as market}<p class="text-xs text-slate-500 leading-relaxed">{market}</p>{/each}
-                {:else}
-                    <p class="text-xs text-slate-500 leading-relaxed">No markets attended yet.</p>
+    <div class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden md:col-span-7">
+        <div class="bg-base-200/60 px-6 py-3 border-b border-base-200 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+                <h1 class="font-semibold text-base text-base-content">{vendor.brandName}</h1>
+                <span class="text-base-content/50 font-mono text-xs">#{vendor.id}</span>
+                <StatusBadge status={vendor.status} />
+                {#if missing.length}
+                    <span class="badge badge-sm badge-warning" title={missing.join(' ')}>Incomplete</span>
                 {/if}
             </div>
-        </div>
+            <div class="flex gap-2">
+                <a href={`/vendors/${vendor.id}/edit`} class="btn btn-primary btn-sm text-xs font-semibold">Edit</a>
+                <a href={vendor.status === 'approved' || vendor.status === 'suspended' ? '/vendors' : '/applications'} class="btn btn-ghost btn-sm text-xs font-semibold">Back to list</a>
+            </div>
         </div>
 
-        <!-- Card Footer -->
+        <div class="card-body">
+            {#if missing.length}
+                <div role="status" class="alert alert-warning text-xs">
+                    <div>
+                        <p class="font-semibold">This {statusLabels[vendor.status].toLowerCase()} record is missing:</p>
+                        <ul class="list-disc pl-4">
+                            {#each missing as message (message)}<li>{message}</li>{/each}
+                        </ul>
+                    </div>
+                </div>
+            {/if}
+
+            <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+                {@render section('Contact')}
+                <div>
+                    <dt class="text-xs font-semibold text-base-content/70">Contact name</dt>
+                    <dd class="text-sm">
+                        {#if vendor.firstName || vendor.lastName}
+                            <a href={contactHref} class="font-medium text-blue-600 hover:text-blue-800 hover:underline">{vendor.firstName} {vendor.lastName}</a>
+                        {:else}—{/if}
+                    </dd>
+                </div>
+                {@render field('Brand name', vendor.brandName)}
+                {@render field('Email', vendor.email)}
+                {@render field('Phone', vendor.phone)}
+                <div>
+                    <dt class="text-xs font-semibold text-base-content/70">Instagram</dt>
+                    <dd class="text-sm">
+                        {#if vendor.instagram}
+                            <a href={instagramUrl(vendor.instagram)} target="_blank" rel="noreferrer" class="text-blue-600 hover:underline">{vendor.instagram}</a>
+                        {:else}—{/if}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-semibold text-base-content/70">Website</dt>
+                    <dd class="text-sm break-all">
+                        {#if vendor.website}
+                            <a href={vendor.website} target="_blank" rel="noreferrer" class="text-blue-600 hover:underline">{vendor.website}</a>
+                        {:else}—{/if}
+                    </dd>
+                </div>
+
+                {@render section('Brand')}
+                {@render field('Category', vendor.category)}
+                {@render field('Commitment level', vendor.commitmentLevel)}
+                <div class="sm:col-span-2">{@render field('About the brand', vendor.aboutBrand)}</div>
+                <div class="sm:col-span-2">{@render field('Objectives for joining The Good Flea', vendor.objectives)}</div>
+                <div class="sm:col-span-2">{@render field('Other markets', vendor.otherMarkets)}</div>
+
+                {@render section('Lead details')}
+                {@render field('Lead source', vendor.leadSource)}
+                <div>
+                    <dt class="text-xs font-semibold text-base-content/70">Tags</dt>
+                    <dd class="flex flex-wrap gap-1">
+                        {#each vendor.tags as tag (tag)}<span class="badge badge-sm">{tag}</span>{:else}<span class="text-sm">—</span>{/each}
+                    </dd>
+                </div>
+                {@render field('Created', formatDate(vendor.createdAt))}
+                {@render field('Imported', vendor.importedAt ? formatDate(vendor.importedAt) : '')}
+                <div class="sm:col-span-2">{@render field('Notes', vendor.notes)}</div>
+
+                {@render section('Compliance')}
+                {@render field('Business registration', vendor.businessRegistration)}
+                {@render field('General liability insurance', vendor.liabilityInsurance)}
+
+                {@render section('Booking interest')}
+                {@render field('Proposed booth size', vendor.proposedBoothSize)}
+                {@render field('Needs a tent', vendor.needsTent ? 'Yes' : 'No')}
+                <div class="sm:col-span-2">{@render field('Requested weekends', vendor.requestedWeekends.join(', '))}</div>
+                {@render field('Booked dates', vendor.bookedDates.join(', '))}
+                {@render field('Markets attended', vendor.marketsAttended.join(', '))}
+            </dl>
+        </div>
     </div>
 
     <!-- Column 2 Container (30% width on desktop) -->
     <div class="flex flex-col gap-4 md:col-span-3">
+        <div class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden">
+            <div class="card-body gap-3">
+                <h4 class="card-title">STATUS</h4>
+                <div><StatusBadge status={vendor.status} size="md" /></div>
+                {#if actions.length}
+                    <div class="flex flex-col gap-2">
+                        {#each actions as action (action.label)}
+                            <button type="button" class={['btn btn-sm w-full', action.tone]} disabled={busy} onclick={() => run(action)}>
+                                {action.label}
+                            </button>
+                        {/each}
+                    </div>
+                {/if}
+                {#if actionError}
+                    <p role="alert" class="text-error text-xs">{actionError}</p>
+                {/if}
+                <SendInvoiceModal
+                    bind:this={invoiceModal}
+                    brandName={vendor.brandName}
+                    vendorName={`${vendor.firstName} ${vendor.lastName}`.trim()}
+                    email={vendor.email}
+                    onsend={invoiceSent}
+                />
+            </div>
+        </div>
+
+        <div class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden">
+            <div class="card-body gap-3">
+                <h4 class="card-title">STATUS HISTORY</h4>
+                <ol class="flex flex-col gap-2">
+                    {#each [...vendor.statusHistory].reverse() as change, index (index)}
+                        <li class="border-l-2 border-base-300 pl-3">
+                            <p class="text-xs font-medium">
+                                {#if change.from}
+                                    {statusLabels[change.from]} → {statusLabels[change.to]}
+                                {:else}
+                                    Created as {statusLabels[change.to]}
+                                {/if}
+                            </p>
+                            <p class="text-[11px] text-base-content/60">{formatDateTime(change.at)}</p>
+                            {#if change.note}<p class="text-xs text-base-content/80 whitespace-pre-line">{change.note}</p>{/if}
+                        </li>
+                    {/each}
+                </ol>
+            </div>
+        </div>
+
         <!-- Independent Card 1: Evaluation Rubric -->
-        <div
-            class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden"
-        >
+        <div class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden">
             <div class="card-body">
                 <h4 class="card-title">EVALUATION RUBRIC</h4>
-
-                <!-- Row 4: Reviewer Notes -->
                 <fieldset class="fieldset">
-                    <legend class="fieldset-legend font-semibold"
-                        >Reviewer Notes</legend
-                    >
-                    <textarea
-                        id="goals"
-                        class="textarea textarea-bordered w-full h-20"
-                        placeholder="vendor is a good fit for the market"
-                    ></textarea>
+                    <legend class="fieldset-legend font-semibold">Reviewer Notes</legend>
+                    <textarea id="goals" class="textarea textarea-bordered w-full h-20" placeholder="vendor is a good fit for the market"></textarea>
                 </fieldset>
                 <fieldset class="fieldset">
                     <label class="label" for="name">Tags</label>
                     <input type="text" id="name" class="input" placeholder="e.g. new vendor" />
-                    </fieldset>
-                </div>
+                </fieldset>
+            </div>
         </div>
 
         <!-- Independent Card 2: Email Sequence Actions -->
-        <div
-            class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden"
-        >
+        <div class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden">
             <div class="card-body">
                 <h4 class="card-title">EMAIL SEQUENCE ACTIONS</h4>
                 <ul class="menu menu-sm rounded-box w-56 p-0">
@@ -193,44 +270,43 @@
             </div>
         </div>
         <DocumentChecklist />
-        <div
-                class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden"
-            >
-                <div class="card-body margin-y-3">
-                    <h4 class="card-title">QUICK ACTIONS</h4>
-                    <ul class="menu menu-sm rounded-box w-56 p-0">
-                        <li><button type="button">Assign booth space</button></li>
-                        <li><button type="button">Send Email</button></li>
-                        <li><button type="button">Add vendor to Call List</button></li>
-                        <li><button type="button">Remove vendor from call list</button></li>
-                        <li><button type="button">Add vendor to market weekend</button></li>
-                        <li><button type="button">Flag for suspension</button></li>
-                    </ul>
-                </div>
+        <div class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden">
+            <div class="card-body">
+                <h4 class="card-title">QUICK ACTIONS</h4>
+                <!-- TODO(next slice): wire these to the call list and market weekend bookings. -->
+                <ul class="menu menu-sm rounded-box w-56 p-0">
+                    <li><button type="button" disabled>Add vendor to call list</button></li>
+                    <li><button type="button" disabled>Add vendor to market weekend</button></li>
+                </ul>
             </div>
-        <div
-            class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden"
-        >
-            <div class="card-body gap-4">
-                <h4 class="card-title">ACTIONS</h4>
-
-                <!-- Top Row: Full Width Primary Action -->
-                
-                <!-- You can open the modal using ID.showModal() method -->
-                
-                <button
-                    type="button"
-                    class="btn btn-primary w-full"
-                    onclick={() => approveModal?.showModal()}
-                    >Send Invoice
-                </button>
-                <ApproveVendorModal bind:this={approveModal} />
-                
-            </div>
-            
         </div>
     </div>
 </div>
+
+<dialog bind:this={confirmDialog} class="modal" aria-labelledby="confirm-status-title">
+    <div class="modal-box max-w-md">
+        <form class="flex flex-col gap-3" onsubmit={confirmPending}>
+            <h3 id="confirm-status-title" class="font-bold text-base">
+                {pending?.label}: {vendor.brandName}
+            </h3>
+            {#if pending}
+                <p class="text-sm text-base-content/70">
+                    Status will change from {statusLabels[vendor.status]} to {statusLabels[pending.to]}.
+                </p>
+            {/if}
+            <div class="flex flex-col gap-1">
+                <label class="text-sm font-medium" for="status-note">Note (optional)</label>
+                <textarea id="status-note" class="textarea w-full" rows="3" bind:value={note} placeholder="Saved in the status history"></textarea>
+            </div>
+            {#if actionError}<p role="alert" class="text-error text-xs">{actionError}</p>{/if}
+            <div class="modal-action mt-0">
+                <button type="button" class="btn btn-sm" onclick={() => confirmDialog?.close()}>Cancel</button>
+                <button type="submit" class={['btn btn-sm', pending?.tone]} disabled={busy}>Confirm</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button aria-label="Close">close</button></form>
+</dialog>
 {:else}
     <div class="card bg-base-100 mx-auto max-w-xl border border-base-200 shadow-sm">
         <div class="card-body items-start">
@@ -251,7 +327,7 @@
         text-decoration: underline;
         text-decoration-color: var(--brand-color);
     }
-    
+
     .btn-primary {
         background-color: var(--brand-color);
         border-color: var(--brand-color);
