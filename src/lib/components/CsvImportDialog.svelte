@@ -1,16 +1,24 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { get } from 'svelte/store';
-	import { MAX_CSV_BYTES, previewVendorCsv, sampleCsv, type CsvPreview } from '#lib/vendor-csv.ts';
-	import { importVendors, vendors } from '#lib/vendor-store.ts';
+	import { MAX_CSV_BYTES, sampleCsv } from '#lib/vendor-csv.ts';
+	import {
+		confirmImport,
+		previewImport,
+		type ImportClassification,
+		type ImportPreview,
+		type ImportResult
+	} from '#lib/vendor-store.ts';
 
-	let dialog: HTMLDialogElement | undefined = $state();
-	let fileInput: HTMLInputElement | undefined = $state();
-	let fileName = $state('');
+	let { onimported }: { onimported?: () => void } = $props();
+
+	let dialog = $state<HTMLDialogElement>();
+	let fileInput = $state<HTMLInputElement>();
+	let file = $state<File | null>(null);
 	let error = $state('');
-	let preview: CsvPreview | null = $state(null);
-	let importing = $state(false);
-	let imported: number | null = $state(null);
+	let preview = $state<ImportPreview | null>(null);
+	let include = $state<number[]>([]);
+	let busy = $state(false);
+	let result = $state<ImportResult | null>(null);
 
 	let sampleUrl = $state('');
 	$effect(() => {
@@ -19,11 +27,22 @@
 		return () => URL.revokeObjectURL(url);
 	});
 
+	const sections: { kind: ImportClassification; title: string; tone: string }[] = [
+		{ kind: 'new', title: 'New vendors to import', tone: '' },
+		{ kind: 'matched', title: 'Matched existing vendors (intake recorded, no new profile)', tone: '' },
+		{ kind: 'possible_duplicate', title: 'Possible duplicates (skipped unless ticked)', tone: 'text-warning' },
+		{ kind: 'skipped', title: 'Skipped', tone: 'text-base-content/60' },
+		{ kind: 'invalid', title: 'Invalid rows', tone: 'text-error' }
+	];
+	const importCount = $derived((preview?.counts.new ?? 0) + (preview?.counts.matched ?? 0) + include.length);
+
 	function reset() {
-		fileName = '';
+		file = null;
 		error = '';
 		preview = null;
-		imported = null;
+		include = [];
+		result = null;
+		busy = false;
 		if (fileInput) fileInput.value = '';
 	}
 
@@ -33,49 +52,70 @@
 	}
 
 	async function choose(event: Event) {
-		const file = (event.currentTarget as HTMLInputElement).files?.[0];
+		const chosen = (event.currentTarget as HTMLInputElement).files?.[0] ?? null;
 		error = '';
 		preview = null;
-		imported = null;
-		if (!file) return;
-		fileName = file.name;
-		if (file.size > MAX_CSV_BYTES) {
+		include = [];
+		result = null;
+		file = chosen;
+		if (!chosen) return;
+		if (chosen.size > MAX_CSV_BYTES) {
 			error = 'That file is larger than 2 MB.';
 			return;
 		}
+		busy = true;
 		try {
-			preview = previewVendorCsv(await file.text(), get(vendors));
-		} catch {
-			error = 'Could not read that file as CSV.';
+			preview = await previewImport(chosen);
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Could not read that file.';
+		} finally {
+			busy = false;
 		}
 	}
 
-	async function confirmImport() {
-		if (!preview?.toImport.length) return;
-		importing = true;
-		const created = await importVendors(preview.toImport.map((row) => row.input));
-		importing = false;
-		imported = created.length;
-		await goto('/applications?status=lead');
+	async function confirm() {
+		if (!file || !preview) return;
+		busy = true;
+		error = '';
+		try {
+			result = await confirmImport(file, include);
+			onimported?.();
+			await goto('/applications?status=lead');
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'The import failed. Nothing was saved.';
+		} finally {
+			busy = false;
+		}
+	}
+
+	function flagText(flags: ImportPreview['rows'][number]['flags']) {
+		const labels = [
+			flags.already_contacted && 'already contacted',
+			flags.inactive && 'inactive',
+			flags.exclude_from_outreach && 'excluded from outreach'
+		].filter(Boolean);
+		return labels.length ? `No call task: ${labels.join(', ')}` : '';
 	}
 </script>
 
 <dialog bind:this={dialog} class="modal" aria-labelledby="csv-import-title" onclose={reset}>
 	<div class="modal-box max-w-3xl">
-		<h2 id="csv-import-title" class="text-base font-bold">Import vendors from CSV</h2>
+		<h2 id="csv-import-title" class="text-base font-bold">Import leads from CSV</h2>
 		<p class="mt-1 text-xs text-base-content/60">
-			Each row needs a brand name and an email, phone or Instagram. Imported vendors start as leads.
-			Tags are separated with <code>;</code>.
+			Each row needs a brand name and an email, phone or Instagram. New vendors start as leads with a discovery call
+			task unless marked already contacted, inactive or excluded from outreach. Tags are separated with <code>;</code>.
 			<a class="link" href={sampleUrl} download="vendor-import-sample.csv">Download a sample CSV</a>
 		</p>
 
-		{#if imported !== null}
+		{#if result}
 			<div role="status" class="alert alert-success mt-4 text-sm">
-				Imported {imported} vendor{imported === 1 ? '' : 's'} as leads.
-				{#if preview && (preview.duplicates.length || preview.invalid.length)}
-					Skipped {preview.duplicates.length} duplicate{preview.duplicates.length === 1 ? '' : 's'} and
-					{preview.invalid.length} invalid row{preview.invalid.length === 1 ? '' : 's'}.
-				{/if}
+				<div>
+					<p>Imported {result.created} new lead{result.created === 1 ? '' : 's'} and recorded {result.matched} match{result.matched === 1 ? '' : 'es'}.</p>
+					<p class="text-xs">
+						{result.callTasksCreated} call task{result.callTasksCreated === 1 ? '' : 's'} created ·
+						{result.skipped} skipped · {result.invalid} invalid
+					</p>
+				</div>
 			</div>
 			<div class="modal-action">
 				<button type="button" class="btn btn-primary btn-sm" onclick={() => dialog?.close()}>Done</button>
@@ -91,79 +131,84 @@
 					class="file-input file-input-sm w-full max-w-md"
 					aria-describedby="csv-import-hint"
 					onchange={choose}
+					disabled={busy}
 				/>
 				<p id="csv-import-hint" class="text-xs text-base-content/60">Max size 2 MB.</p>
 			</div>
 
 			{#if error}<p role="alert" class="mt-2 text-sm text-error">{error}</p>{/if}
+			{#if busy && !preview}
+				<p class="mt-3 flex items-center gap-2 text-sm text-base-content/60" role="status">
+					<span class="loading loading-spinner loading-xs"></span> Checking rows…
+				</p>
+			{/if}
 
 			{#if preview}
 				<div class="mt-4 flex flex-col gap-4 text-sm">
 					<p>
-						<strong>{fileName}</strong>: {preview.toImport.length} to import,
-						{preview.duplicates.length} duplicate{preview.duplicates.length === 1 ? '' : 's'} skipped,
-						{preview.invalid.length} invalid.
+						<strong>{file?.name}</strong>: {preview.counts.new} new, {preview.counts.matched} matched,
+						{preview.counts.possible_duplicate} possible duplicate{preview.counts.possible_duplicate === 1 ? '' : 's'},
+						{preview.counts.skipped} skipped, {preview.counts.invalid} invalid.
 					</p>
 					{#if preview.ignoredHeaders.length}
 						<p class="text-xs text-base-content/60">Ignored columns: {preview.ignoredHeaders.join(', ')}</p>
 					{/if}
 
-					{#if preview.toImport.length}
-						<section>
-							<h3 class="mb-1 font-semibold">Rows to import</h3>
-							<div class="max-h-56 overflow-auto rounded border border-base-200">
-								<table class="table table-xs">
-									<thead><tr><th>Row</th><th>Brand</th><th>Contact</th><th>Email</th><th>Instagram</th><th>Category</th></tr></thead>
-									<tbody>
-										{#each preview.toImport as row (row.line)}
+					{#each sections as section (section.kind)}
+						{@const rows = preview.rows.filter((row) => row.classification === section.kind)}
+						{#if rows.length}
+							<section>
+								<h3 class={['mb-1 font-semibold', section.tone]}>{section.title}</h3>
+								<div class="max-h-56 overflow-auto rounded border border-base-200">
+									<table class="table table-xs">
+										<thead>
 											<tr>
-												<td>{row.line}</td>
-												<td>{row.input.brandName}</td>
-												<td>{row.input.firstName} {row.input.lastName}</td>
-												<td>{row.input.email || '—'}</td>
-												<td>{row.input.instagram || '—'}</td>
-												<td>{row.input.category || '—'}</td>
+												{#if section.kind === 'possible_duplicate'}<th><span class="sr-only">Import</span></th>{/if}
+												<th>Row</th><th>Brand</th><th>Contact</th><th>Details</th>
 											</tr>
-										{/each}
-									</tbody>
-								</table>
-							</div>
-						</section>
-					{/if}
-
-					{#if preview.duplicates.length}
-						<section>
-							<h3 class="mb-1 font-semibold">Duplicates (skipped)</h3>
-							<ul class="list-disc pl-5 text-xs">
-								{#each preview.duplicates as row (row.line)}
-									<li>Row {row.line}, {row.brandName}: {row.reason}</li>
-								{/each}
-							</ul>
-						</section>
-					{/if}
-
-					{#if preview.invalid.length}
-						<section>
-							<h3 class="mb-1 font-semibold text-error">Invalid rows (skipped)</h3>
-							<ul class="list-disc pl-5 text-xs">
-								{#each preview.invalid as row (row.line)}
-									<li>Row {row.line}, {row.brandName}: {row.reasons.join(' ')}</li>
-								{/each}
-							</ul>
-						</section>
-					{/if}
+										</thead>
+										<tbody>
+											{#each rows as row (row.line)}
+												<tr>
+													{#if section.kind === 'possible_duplicate'}
+														<td>
+															<input
+																type="checkbox"
+																class="checkbox checkbox-xs"
+																aria-label={`Import row ${row.line} as a new vendor`}
+																bind:group={include}
+																value={row.line}
+															/>
+														</td>
+													{/if}
+													<td>{row.line}</td>
+													<td>{row.brandName || '—'}</td>
+													<td>{[row.data.email, row.data.phone, row.data.instagram].filter(Boolean).join(' · ') || '—'}</td>
+													<td class="text-xs">
+														{row.reasons.join(' ')}
+														{#each row.matches as match (match.vendor.id)}
+															<a class="link ml-1" href={`/vendors/${match.vendor.id}`} target="_blank" rel="noopener">{match.vendor.brand_name}</a>
+														{/each}
+														{#if section.kind === 'new' && flagText(row.flags)}
+															<span class="text-base-content/60">{flagText(row.flags)}</span>
+														{/if}
+													</td>
+												</tr>
+											{/each}
+										</tbody>
+									</table>
+								</div>
+							</section>
+						{/if}
+					{/each}
 				</div>
 			{/if}
 
 			<div class="modal-action">
 				<button type="button" class="btn btn-sm" onclick={() => dialog?.close()}>Cancel</button>
-				<button
-					type="button"
-					class="btn btn-primary btn-sm"
-					disabled={!preview?.toImport.length || importing}
-					onclick={confirmImport}
-				>
-					Import {preview?.toImport.length ?? 0} vendor{preview?.toImport.length === 1 ? '' : 's'}
+				<button type="button" class="btn btn-primary btn-sm" disabled={!preview || !importCount || busy} onclick={confirm}>
+					{#if busy && preview}<span class="loading loading-spinner loading-xs"></span>{/if}
+					Import {importCount} row{importCount === 1 ? '' : 's'}
 				</button>
 			</div>
 		{/if}

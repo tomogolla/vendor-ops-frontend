@@ -1,5 +1,15 @@
 <script lang="ts" module>
+	import type { BookingInterest, CallInput, CreatableStatus, UserSummary, VendorInput } from '#lib/vendor-store.ts';
+
 	export type FormSection = 'status' | 'contact' | 'brand' | 'lead' | 'call' | 'compliance' | 'booking';
+	export type VendorFormPayload = {
+		vendor: VendorInput;
+		status: CreatableStatus;
+		booking: BookingInterest;
+		call: CallInput;
+		ownerId: string | null | undefined;
+		confirmDuplicate: boolean;
+	};
 </script>
 
 <script lang="ts">
@@ -17,43 +27,59 @@
 		liabilityInsurance
 	} from '#lib/options.ts';
 	import {
+		DuplicateVendorError,
+		emptyBooking,
+		emptyCallInput,
 		emptyVendorInput,
 		findDuplicates,
 		normaliseEmail,
-		normaliseCallLog,
 		normaliseInstagram,
 		statusLabels,
 		toVendorInput,
-		type CreatableStatus,
 		type DuplicateMatch,
-		type Vendor,
-		type VendorInput
+		type Vendor
 	} from '#lib/vendor-store.ts';
-	import { requiredErrors, validateVendor, type FieldName } from '#lib/vendor-validation.ts';
+	import { callErrors, requiredErrors, validateVendor, type FieldName } from '#lib/vendor-validation.ts';
 
 	type Props = {
 		mode: 'create' | 'edit';
 		initial?: Vendor;
-		/** Receives trimmed input; in create mode also the chosen starting status. */
-		onsave: (input: VendorInput, status: CreatableStatus) => Promise<unknown> | void;
-		/** Set a section to false to hide it, e.g. for a public application form. The call section defaults to create mode only. */
+		/** Receives trimmed input plus, in create mode, the starting status, booking interest and first call. */
+		onsave: (payload: VendorFormPayload) => Promise<unknown> | void;
+		/** Set a section to false to hide it, e.g. for a public application form. Call and booking default to create mode only. */
 		fields?: Partial<Record<FormSection, boolean>>;
 		cancelHref?: string;
+		/** Team members for the owner picker; omit to hide it. */
+		team?: UserSummary[];
+		currentUserId?: string;
+		canAssignOthers?: boolean;
 	};
 
-	let { mode, initial, onsave, fields = {}, cancelHref }: Props = $props();
+	let { mode, initial, onsave, fields = {}, cancelHref, team, currentUserId, canAssignOthers = false }: Props = $props();
 
 	const uid = $props.id();
 	const id = (name: string) => `${uid}-${name}`;
-	const show = (section: FormSection) =>
-		section === 'call' ? (fields.call ?? mode === 'create') : fields[section] !== false;
+	const show = (section: FormSection) => {
+		if (section === 'call') return fields.call ?? mode === 'create';
+		// Booking interest belongs to an application, so it is only asked for when one is created.
+		if (section === 'booking') return fields.booking ?? (mode === 'create' && status === 'applied');
+		return fields[section] !== false;
+	};
 	const creatableStatuses: CreatableStatus[] = ['lead', 'applied'];
 
 	const start = untrack(() => (initial ? toVendorInput(initial) : emptyVendorInput()));
 	let form = $state(start);
 	let tagsText = $state(start.tags.join(', '));
 	let status = $state<CreatableStatus>('lead');
-	const baseline = JSON.stringify([start, start.tags.join(', '), 'lead']);
+	let booking = $state(emptyBooking());
+	let ownerId = $state<string>(untrack(() => initial?.owner?.id ?? ''));
+	const initialOwnerId = untrack(() => initial?.owner?.id ?? '');
+	const ownerOptions = $derived(
+		(team ?? []).filter((member) => canAssignOthers || member.id === currentUserId || member.id === initialOwnerId)
+	);
+	const showOwner = $derived(Boolean(team) && (mode === 'create' ? status === 'lead' : canAssignOthers));
+	let call = $state(emptyCallInput());
+	const baseline = JSON.stringify([start, start.tags.join(', '), 'lead', emptyBooking(), emptyCallInput()]);
 
 	let formEl: HTMLFormElement | undefined = $state();
 	let submitted = $state(false);
@@ -65,9 +91,11 @@
 
 	const validationStatus = $derived(mode === 'edit' && initial ? initial.status : status);
 	const required = $derived(new Set(Object.keys(requiredErrors(emptyVendorInput(), validationStatus))));
-	const dirty = $derived(JSON.stringify([form, tagsText, status]) !== baseline);
-	const errors = $derived(submitted ? validateVendor(payload(), validationStatus) : {});
-	const duplicateKey = $derived(`${normaliseEmail(form.email)}|${normaliseInstagram(form.instagram)}`);
+	const dirty = $derived(JSON.stringify([form, tagsText, status, booking, call]) !== baseline || ownerId !== initialOwnerId);
+	const errors = $derived(submitted ? allErrors() : {});
+	const duplicateKey = $derived(
+		`${normaliseEmail(form.email)}|${form.phone.replace(/\D/g, '')}|${normaliseInstagram(form.instagram)}`
+	);
 	const showDuplicates = $derived(duplicates.length > 0 && warnedFor === duplicateKey);
 	const leadSourceOptions: readonly string[] = $derived(
 		form.leadSource && !(leadSources as readonly string[]).includes(form.leadSource)
@@ -80,10 +108,13 @@
 		const trimmed = Object.fromEntries(
 			Object.entries(snapshot).map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value])
 		) as VendorInput;
+		return { ...trimmed, tags: tagsText.split(',').map((tag) => tag.trim()).filter(Boolean) };
+	}
+
+	function allErrors() {
 		return {
-			...trimmed,
-			tags: tagsText.split(',').map((tag) => tag.trim()).filter(Boolean),
-			call: normaliseCallLog(snapshot.call)
+			...validateVendor(payload(), validationStatus),
+			...(show('call') ? callErrors(call) : {})
 		};
 	}
 
@@ -102,31 +133,44 @@
 		event.preventDefault();
 		submitted = true;
 		const input = payload();
-		if (Object.keys(validateVendor(input, validationStatus)).length) {
+		if (Object.keys(allErrors()).length) {
 			await tick();
 			formEl?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
 			return;
 		}
-		if (warnedFor !== duplicateKey) {
-			const matches = await findDuplicates({
-				email: input.email,
-				instagram: input.instagram,
-				excludeId: initial?.id
-			});
-			if (matches.length) {
-				duplicates = matches;
-				warnedFor = duplicateKey;
-				return;
-			}
-		}
 		saving = true;
 		saveError = '';
-		saved = true;
 		try {
-			await onsave(input, status);
+			if (warnedFor !== duplicateKey) {
+				const result = await findDuplicates({
+					email: input.email,
+					phone: input.phone,
+					instagram: input.instagram,
+					excludeId: initial?.id
+				});
+				if (result.matches.length) {
+					duplicates = result.matches;
+					warnedFor = duplicateKey;
+					return;
+				}
+			}
+			saved = true;
+			await onsave({
+				vendor: input,
+				status,
+				booking: $state.snapshot(booking),
+				call: $state.snapshot(call),
+				ownerId: showOwner && ownerId !== initialOwnerId ? ownerId || null : undefined,
+				confirmDuplicate: warnedFor === duplicateKey && duplicates.length > 0
+			});
 		} catch (error) {
 			saved = false;
-			saveError = error instanceof Error ? error.message : 'Could not save the vendor.';
+			if (error instanceof DuplicateVendorError && error.code === 'possible_duplicate') {
+				duplicates = error.result.matches;
+				warnedFor = duplicateKey;
+			} else {
+				saveError = error instanceof Error ? error.message : 'Could not save the vendor.';
+			}
 		} finally {
 			saving = false;
 		}
@@ -283,6 +327,18 @@
 						<input id={id('tags')} class="input-line" placeholder="VIP, Returning" bind:value={tagsText} aria-describedby={id('tags-hint')} />
 						<p id={id('tags-hint')} class="text-xs text-base-content/60">Separate tags with commas.</p>
 					</div>
+					{#if showOwner}
+						<div class="flex flex-col gap-1">
+							<label class="text-sm font-medium" for={id('owner')}>Owner</label>
+							<select id={id('owner')} class="input-line" bind:value={ownerId} aria-describedby={id('owner-hint')}>
+								<option value="">Unassigned (team queue)</option>
+								{#each ownerOptions as member (member.id)}
+									<option value={member.id}>{member.id === currentUserId ? `Me (${member.name})` : member.name}</option>
+								{/each}
+							</select>
+							<p id={id('owner-hint')} class="text-xs text-base-content/60">The discovery call task goes to the owner.</p>
+						</div>
+					{/if}
 					<div class="flex flex-col gap-1 sm:col-span-2">
 						<label class="text-sm font-medium" for={id('notes')}>Notes</label>
 						<textarea id={id('notes')} class="input-line" rows="3" bind:value={form.notes}></textarea>
@@ -298,10 +354,10 @@
 				<div>
 					<h2 class="card-title text-sm">Call</h2>
 					<p class="text-xs text-base-content/60">
-						Optional. Leave the outcome as "Not called yet" and this vendor shows up as a call task.
+						Optional. A discovery call task is created automatically; if you already spoke to them, log the call here.
 					</p>
 				</div>
-				<CallLogFields bind:value={form.call} idPrefix={id('call')} {errors} />
+				<CallLogFields bind:value={call} idPrefix={id('call')} {errors} emptyOutcomeLabel="Not called yet" />
 			</div>
 		</section>
 	{/if}
@@ -339,7 +395,7 @@
 				<div class="grid gap-4 sm:grid-cols-2">
 					<div class="flex flex-col gap-1">
 						<label class="text-sm font-medium" for={id('proposedBoothSize')}>Proposed booth size</label>
-						<select id={id('proposedBoothSize')} class="input-line" bind:value={form.proposedBoothSize}>
+						<select id={id('proposedBoothSize')} class="input-line" bind:value={booking.proposedBoothSize}>
 							<option value="">Not sure yet</option>
 							{#each boothSizes as option (option)}
 								<option value={option}>{option}</option>
@@ -348,12 +404,12 @@
 					</div>
 					<div class="flex items-end">
 						<label class="label cursor-pointer gap-2 text-sm text-base-content" for={id('needsTent')}>
-							<input id={id('needsTent')} type="checkbox" class="checkbox checkbox-sm" bind:checked={form.needsTent} />
+							<input id={id('needsTent')} type="checkbox" class="checkbox checkbox-sm" bind:checked={booking.needsTent} />
 							Needs a tent
 						</label>
 					</div>
 					<div class="sm:col-span-2">
-						<MarketWeekendSelect bind:selected={form.requestedWeekends} label="Requested weekends" />
+						<MarketWeekendSelect bind:selected={booking.requestedWeekends} label="Requested weekends" />
 					</div>
 				</div>
 			</div>
@@ -364,7 +420,7 @@
 		<div role="alert" class="alert alert-warning flex flex-col items-start gap-2">
 			<p class="font-semibold text-sm">
 				{duplicates.length === 1 ? 'A vendor' : `${duplicates.length} vendors`} with the same
-				email or Instagram already exist{duplicates.length === 1 ? 's' : ''}:
+				email, phone or Instagram already exist{duplicates.length === 1 ? 's' : ''}:
 			</p>
 			<ul class="list-disc pl-5 text-sm">
 				{#each duplicates as match (match.vendor.id)}
@@ -376,6 +432,9 @@
 					</li>
 				{/each}
 			</ul>
+			{#if mode === 'create' && status === 'applied'}
+				<p class="text-xs">Submitting will add this application to the matching vendor rather than create a new one.</p>
+			{/if}
 			<p class="text-xs">Links open in a new tab so you don't lose this form.</p>
 		</div>
 	{/if}
@@ -390,7 +449,7 @@
 		{/if}
 		<button type="submit" class="btn btn-primary btn-sm" disabled={saving}>
 			{#if showDuplicates}
-				{mode === 'create' ? 'Create anyway' : 'Save anyway'}
+				{mode === 'edit' ? 'Save anyway' : status === 'applied' ? 'Submit application' : 'Create anyway'}
 			{:else}
 				{mode === 'create' ? 'Create vendor' : 'Save changes'}
 			{/if}

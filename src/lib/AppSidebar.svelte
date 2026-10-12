@@ -1,5 +1,30 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
   import { page } from '$app/state';
+  import { session } from '#lib/session.svelte.ts';
+  import { countTasks } from '#lib/vendor-store.ts';
+
+  let myOpenTasks = $state<number | null>(null);
+  $effect(() => {
+    void page.url.pathname;
+    countTasks({ owner: 'me', is_open: true })
+      .then((count) => (myOpenTasks = count))
+      .catch(() => (myOpenTasks = null));
+  });
+
+  const initials = $derived(
+    (session.user?.name ?? '?')
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase()
+  );
+
+  async function logout() {
+    await session.logout();
+    await goto('/login');
+  }
 
   const isActive = (href: string) =>
     href === '/' ? page.url.pathname === '/' : page.url.pathname === href || page.url.pathname.startsWith(href + '/');
@@ -43,6 +68,21 @@
             </a>
           </li>
 
+          <!-- Task Center -->
+          <li>
+            <a href="/tasks" class={['flex items-center justify-between px-3 py-2.5 rounded-lg font-medium text-sm transition-colors', isActive('/tasks') ? 'text-[#35b2b2] bg-[#35b2b2]/10' : 'hover:bg-base-200']}>
+              <div class="flex items-center gap-3">
+                <svg class={['w-5 h-5', !isActive('/tasks') && 'text-base-content/60']} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                </svg>
+                <span>Tasks</span>
+              </div>
+              {#if myOpenTasks}
+                <span class="badge badge-sm border-none bg-amber-100 text-amber-800 font-semibold" title="Your open tasks">{myOpenTasks}</span>
+              {/if}
+            </a>
+          </li>
+
           <!-- Applications / Leads -->
           <li>
             <a href="/applications" class={['flex items-center justify-between px-3 py-2.5 rounded-lg font-medium text-sm transition-colors', isActive('/applications') ? 'text-[#35b2b2] bg-[#35b2b2]/10' : 'hover:bg-base-200']}>
@@ -52,7 +92,6 @@
                 </svg>
                 <span>Applications</span>
               </div>
-              <span class="badge badge-sm border-none bg-amber-100 text-amber-800 font-semibold">5</span>
             </a>
           </li>
 
@@ -109,15 +148,15 @@
           <div class="flex items-center gap-3">
             <div class="avatar placeholder">
               <div class="bg-neutral text-neutral-content rounded-full w-9">
-                <span class="text-xs font-bold">W</span>
+                <span class="text-xs font-bold">{initials}</span>
               </div>
             </div>
             <div>
-              <p class="text-sm font-bold leading-tight text-base-content">Wambui</p>
-              <p class="text-xs text-base-content/50">Sales Lead</p>
+              <p class="text-sm font-bold leading-tight text-base-content">{session.user?.name ?? ''}</p>
+              <p class="text-xs text-base-content/50">{session.isAdmin ? 'Administrator' : 'Team Member'}</p>
             </div>
           </div>
-          <button class="btn btn-ghost btn-xs btn-circle text-base-content/60 hover:text-error" title="Logout">
+          <button type="button" class="btn btn-ghost btn-xs btn-circle text-base-content/60 hover:text-error" title="Log out" aria-label="Log out" onclick={logout}>
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
             </svg>

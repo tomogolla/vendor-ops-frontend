@@ -1,8 +1,22 @@
 <script lang="ts">
-    import { needsCall, neverCalled, vendors } from '#lib/vendor-store.ts';
+    import { countTasks } from '#lib/vendor-store.ts';
 
-    const toCall = $derived($vendors.filter(needsCall));
-    const notCalled = $derived(toCall.filter(neverCalled).length);
+    type CallCounts = { open: number; overdue: number; mine: number };
+    let calls = $state<CallCounts | null>(null);
+    let callsError = $state('');
+
+    function loadCalls() {
+        callsError = '';
+        const base = { task_type: 'DISCOVERY_CALL', is_open: true };
+        Promise.all([
+            countTasks(base),
+            countTasks({ ...base, due_before: new Date().toISOString() }),
+            countTasks({ ...base, owner: 'me' })
+        ])
+            .then(([open, overdue, mine]) => (calls = { open, overdue, mine }))
+            .catch((error) => (callsError = error instanceof Error ? error.message : 'Could not load calls.'));
+    }
+    $effect(loadCalls);
 </script>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
@@ -20,24 +34,27 @@
         </header>
         <!-- Task Alert List -->
         <div class="space-y-3">
-            <!-- Call tasks: live from the vendor store -->
+            <!-- Call tasks: live open DISCOVERY_CALL tasks from the API -->
             <div
                 class="bg-base-200/40 border border-base-200 rounded-lg p-3.5 flex items-center justify-between gap-4"
             >
                 <div class="space-y-0.5">
                     <h4 class="font-bold text-sm text-base-content">Vendor Calls Due</h4>
                     <p class="text-xs text-base-content/60">
-                        {#if toCall.length}
-                            {toCall.length} new lead{toCall.length === 1 ? '' : 's'}/application{toCall.length === 1 ? '' : 's'} to call
-                            ({notCalled} not called yet)
+                        {#if callsError}
+                            {callsError} <button type="button" class="link" onclick={loadCalls}>Retry</button>
+                        {:else if !calls}
+                            Loading…
+                        {:else if calls.open}
+                            {calls.open} open discovery call{calls.open === 1 ? '' : 's'} · {calls.overdue} overdue · {calls.mine} assigned to you
                         {:else}
                             No calls due
                         {/if}
                     </p>
                 </div>
-                {#if toCall.length}
+                {#if calls?.open}
                     <a
-                        href="/applications?call=due"
+                        href="/tasks?view=calls"
                         class="btn btn-xs sm:btn-sm border-none bg-amber-100 text-amber-800 hover:bg-amber-200 font-medium rounded-md px-3 whitespace-nowrap"
                     >
                         Action Required

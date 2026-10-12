@@ -1,3 +1,3 @@
-// The prototype vendor store lives in sessionStorage, which only exists in the browser,
-// so render client-side only. Remove when the Django backend lands.
+// Client-rendered SPA: all data comes from the Django API with the user's session cookie.
 export const ssr = false;
+export const prerender = false;

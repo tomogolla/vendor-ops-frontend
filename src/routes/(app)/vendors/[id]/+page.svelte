@@ -1,17 +1,25 @@
 <script lang="ts">
     import type { PageProps } from './$types';
     import CallActionsCard from '#lib/components/CallActionsCard.svelte';
+    import NotesCard from '#lib/components/NotesCard.svelte';
     import SendInvoiceModal from '#lib/components/SendInvoiceModal.svelte';
     import DocumentChecklist from '#lib/components/DocumentChecklist.svelte';
     import StatusBadge from '#lib/components/StatusBadge.svelte';
     import { formatDate, formatDateTime, instagramUrl } from '#lib/format.ts';
+    import { Resource } from '#lib/resource.svelte.ts';
+    import { session } from '#lib/session.svelte.ts';
     import {
-        canTransition,
+        canChangeStatus,
+        getVendor,
+        listActivity,
+        listApplications,
         needsCall,
         outcomeSuggestions,
         setStatus,
         statusLabels,
-        vendors,
+        type ActivityEvent,
+        type Application,
+        type Vendor,
         type VendorStatus
     } from '#lib/vendor-store.ts';
     import { isIncomplete, requiredErrors } from '#lib/vendor-validation.ts';
@@ -23,7 +31,25 @@
     // an inoice id will still mark the vendor as paid for the billed products
 
     const contactHref = $derived(`/customers/${data.id}`);
-    const vendor = $derived($vendors.find((item) => item.id === data.id));
+    const vendorResource = new Resource<Vendor>();
+    const applications = new Resource<Application[]>();
+    const activity = new Resource<ActivityEvent[]>();
+
+    function reloadRelated() {
+        const id = data.id;
+        applications.load(() => listApplications(id));
+        activity.load(() => listActivity(id).then((page) => page.results));
+    }
+
+    function refresh() {
+        const id = data.id;
+        vendorResource.load(() => getVendor(id));
+        reloadRelated();
+    }
+    $effect(refresh);
+
+    const vendor = $derived(vendorResource.data?.id === data.id ? vendorResource.data : undefined);
+    const latestApplication = $derived(applications.data?.[0]);
     const missing = $derived(vendor && isIncomplete(vendor) ? Object.values(requiredErrors(vendor, vendor.status)) : []);
 
     type Action = {
@@ -45,15 +71,15 @@
         declined: [review('Reopen')]
     };
     const actions = $derived(
-        vendor ? actionsByStatus[vendor.status].filter((action) => canTransition(vendor.status, action.to)) : []
+        vendor ? actionsByStatus[vendor.status].filter((action) => canChangeStatus(session.isAdmin, vendor.status, action.to)) : []
     );
 
     let dismissedSuggestion = $state('');
     const suggestion = $derived.by(() => {
-        if (!vendor?.call.callOutcome) return null;
-        const to = outcomeSuggestions[vendor.call.callOutcome];
-        if (!to || !canTransition(vendor.status, to)) return null;
-        if (dismissedSuggestion === `${vendor.id}:${vendor.call.callOutcome}`) return null;
+        if (!vendor?.call.lastOutcome) return null;
+        const to = outcomeSuggestions[vendor.call.lastOutcome];
+        if (!to || !canChangeStatus(session.isAdmin, vendor.status, to)) return null;
+        if (dismissedSuggestion === `${vendor.id}:${vendor.call.lastOutcome}`) return null;
         return actions.find((action) => action.to === to) ?? (to === 'declined' ? decline : null);
     });
 
@@ -69,8 +95,13 @@
         actionError = '';
         const result = await setStatus(data.id, to, statusNote);
         busy = false;
-        if (!result.ok) actionError = result.message;
-        return result.ok;
+        if (!result.ok) {
+            actionError = result.message;
+            return false;
+        }
+        vendorResource.data = result.vendor;
+        reloadRelated();
+        return true;
     }
 
     function run(action: Action, presetNote = '') {
@@ -119,7 +150,6 @@
         <div class="bg-base-200/60 px-6 py-3 border-b border-base-200 flex flex-wrap items-center justify-between gap-2">
             <div class="flex flex-wrap items-center gap-2">
                 <h1 class="font-semibold text-base text-base-content">{vendor.brandName}</h1>
-                <span class="text-base-content/50 font-mono text-xs">#{vendor.id}</span>
                 <StatusBadge status={vendor.status} />
                 {#if missing.length}
                     <span class="badge badge-sm badge-warning" title={missing.join(' ')}>Incomplete</span>
@@ -191,25 +221,32 @@
                         {#each vendor.tags as tag (tag)}<span class="badge badge-sm">{tag}</span>{:else}<span class="text-sm">—</span>{/each}
                     </dd>
                 </div>
-                {@render field('Created', formatDate(vendor.createdAt))}
-                {@render field('Imported', vendor.importedAt ? formatDate(vendor.importedAt) : '')}
+                {@render field('Source details', vendor.sourceDetails)}
+                {@render field('Owner', vendor.owner?.name ?? 'Unassigned')}
+                {@render field('Created', `${formatDate(vendor.createdAt)}${vendor.createdBy ? ` by ${vendor.createdBy.name}` : ''}`)}
+                {@render field('Active', vendor.isActive ? (vendor.outreachOptOut ? 'Yes (excluded from outreach)' : 'Yes') : 'No')}
                 <div class="sm:col-span-2">{@render field('Notes', vendor.notes)}</div>
 
                 {@render section('Compliance')}
                 {@render field('Business registration', vendor.businessRegistration)}
                 {@render field('General liability insurance', vendor.liabilityInsurance)}
 
-                {@render section('Booking interest')}
-                {@render field('Proposed booth size', vendor.proposedBoothSize)}
-                {@render field('Needs a tent', vendor.needsTent ? 'Yes' : 'No')}
-                <div class="sm:col-span-2">{@render field('Requested weekends', vendor.requestedWeekends.join(', '))}</div>
-                {@render field('Booked dates', vendor.bookedDates.join(', '))}
-                {@render field('Markets attended', vendor.marketsAttended.join(', '))}
+                {@render section(latestApplication ? `Booking interest (application ${formatDate(latestApplication.submittedAt)})` : 'Booking interest')}
+                {#if latestApplication}
+                    {@render field('Proposed booth size', latestApplication.booking.proposedBoothSize)}
+                    {@render field('Needs a tent', latestApplication.booking.needsTent ? 'Yes' : 'No')}
+                    <div class="sm:col-span-2">{@render field('Requested weekends', latestApplication.booking.requestedWeekends.join(', '))}</div>
+                    {#if (applications.data?.length ?? 0) > 1}
+                        <p class="col-span-full text-xs text-base-content/60">{applications.data?.length} applications in total.</p>
+                    {/if}
+                {:else}
+                    <p class="col-span-full text-sm text-base-content/60">{applications.loading ? 'Loading applications…' : 'No application yet.'}</p>
+                {/if}
             </dl>
         </div>
     </div>
     {#key vendor.id}
-        <CallActionsCard {vendor} />
+        <CallActionsCard {vendor} onlogged={refresh} />
     {/key}
     </div>
 
@@ -219,8 +256,8 @@
             <div class="card-body gap-3">
                 <h4 class="card-title">STATUS</h4>
                 <div><StatusBadge status={vendor.status} size="md" /></div>
-                {#if suggestion && vendor.call.callOutcome}
-                    {@const outcome = vendor.call.callOutcome}
+                {#if suggestion && vendor.call.lastOutcome}
+                    {@const outcome = vendor.call.lastOutcome}
                     <div role="status" class="rounded-lg border border-info/40 bg-info/10 p-2 text-xs">
                         <p>Last call outcome: <strong>{outcome}</strong>. Suggested next step:</p>
                         <div class="mt-2 flex gap-2">
@@ -257,24 +294,36 @@
 
         <div class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden">
             <div class="card-body gap-3">
-                <h4 class="card-title">STATUS HISTORY</h4>
-                <ol class="flex flex-col gap-2">
-                    {#each [...vendor.statusHistory].reverse() as change, index (index)}
-                        <li class="border-l-2 border-base-300 pl-3">
-                            <p class="text-xs font-medium">
-                                {#if change.from}
-                                    {statusLabels[change.from]} → {statusLabels[change.to]}
-                                {:else}
-                                    Created as {statusLabels[change.to]}
-                                {/if}
-                            </p>
-                            <p class="text-[11px] text-base-content/60">{formatDateTime(change.at)}</p>
-                            {#if change.note}<p class="text-xs text-base-content/80 whitespace-pre-line">{change.note}</p>{/if}
-                        </li>
-                    {/each}
-                </ol>
+                <h4 class="card-title">ACTIVITY</h4>
+                {#if activity.error}
+                    <p role="alert" class="text-xs text-error">
+                        {activity.error.message}
+                        <button type="button" class="link" onclick={activity.retry}>Retry</button>
+                    </p>
+                {:else if !activity.data}
+                    <p class="text-xs text-base-content/60">Loading activity…</p>
+                {:else}
+                    <ol class="flex flex-col gap-2">
+                        {#each activity.data as event (event.id)}
+                            {@const detail = [event.metadata.note, event.metadata.reason, event.metadata.notes].find((value) => typeof value === 'string' && value)}
+                            <li class="border-l-2 border-base-300 pl-3">
+                                <p class="text-xs font-medium">{event.description}</p>
+                                <p class="text-[11px] text-base-content/60">
+                                    {formatDateTime(event.createdAt)} · {event.actor?.name ?? 'System'}
+                                </p>
+                                {#if detail}<p class="text-xs text-base-content/80 whitespace-pre-line">{detail}</p>{/if}
+                            </li>
+                        {:else}
+                            <li class="text-xs text-base-content/60">No activity yet.</li>
+                        {/each}
+                    </ol>
+                {/if}
             </div>
         </div>
+
+        {#key vendor.id}
+            <NotesCard vendorId={vendor.id} onadded={() => activity.load()} />
+        {/key}
 
         <!-- Independent Card 1: Evaluation Rubric -->
         <div class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden">
@@ -330,7 +379,7 @@
             {/if}
             <div class="flex flex-col gap-1">
                 <label class="text-sm font-medium" for="status-note">Note (optional)</label>
-                <textarea id="status-note" class="textarea w-full" rows="3" bind:value={note} placeholder="Saved in the status history"></textarea>
+                <textarea id="status-note" class="textarea w-full" rows="3" bind:value={note} placeholder="Saved in the activity timeline"></textarea>
             </div>
             {#if actionError}<p role="alert" class="text-error text-xs">{actionError}</p>{/if}
             <div class="modal-action mt-0">
@@ -341,13 +390,22 @@
     </div>
     <form method="dialog" class="modal-backdrop"><button aria-label="Close">close</button></form>
 </dialog>
-{:else}
+{:else if vendorResource.notFound}
     <div class="card bg-base-100 mx-auto max-w-xl border border-base-200 shadow-sm">
         <div class="card-body items-start">
             <h1 class="card-title">Vendor not found</h1>
-            <p class="text-sm text-base-content/70">There is no vendor account with ID #{data.id}.</p>
+            <p class="text-sm text-base-content/70">There is no vendor with ID {data.id}.</p>
             <a href="/vendors" class="btn btn-primary btn-sm">Return to vendor list</a>
         </div>
+    </div>
+{:else if vendorResource.error}
+    <div role="alert" class="alert alert-error alert-soft flex flex-wrap justify-between text-sm">
+        <span>{vendorResource.error.message}</span>
+        <button type="button" class="btn btn-sm" onclick={vendorResource.retry}>Retry</button>
+    </div>
+{:else}
+    <div class="flex items-center gap-2 p-4 text-sm text-base-content/60" role="status">
+        <span class="loading loading-spinner loading-sm"></span> Loading vendor…
     </div>
 {/if}
 
