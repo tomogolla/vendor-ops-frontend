@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { vendors } from "../../lib/vendor-store";
+    import { vendors } from "#lib/vendor-store.ts";
 </script>
 
 <div class="bg-base-100 w-full shadow-sm border border-base-200 rounded-lg">

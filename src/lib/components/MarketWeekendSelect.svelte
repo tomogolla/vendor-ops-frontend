@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { marketWeekends } from "#lib/options.ts";
+
   interface Props {
     /** Predefined list of market weekends to choose from */
-    weekends?: string[];
+    weekends?: readonly string[];
     /** Currently selected weekends (bindable) */
     selected?: string[];
     /** Allow selecting more than one (default: true) */
@@ -15,21 +17,7 @@
   }
 
   let {
-    weekends = [
-      "October 10 & 11",
-      "October 17 & 18",
-      "October 24 & 25",
-      "October 31 & November 1",
-      "November 7 & 8",
-      "November 14 & 15",
-      "November 21 & 22",
-      "November 28 & 29",
-      "December 5 & 6",
-      "December 12 & 13",
-      "December 19 & 20",
-      "December 26 & 27",
-
-    ],
+    weekends = marketWeekends,
     selected = $bindable([]),
     multiple = true,
     label = "Market Weekend",

@@ -2,7 +2,7 @@
     import type { PageProps } from './$types';
     import ApproveVendorModal from '#lib/components/SendInvoiceModal.svelte';
     import DocumentChecklist from '#lib/components/DocumentChecklist.svelte';
-    import { vendors } from '../../../lib/vendor-store';
+    import { vendors } from '#lib/vendor-store.ts';
 
     let { data }: PageProps = $props();
     // TODO(decision): vendors vs customers — contact link assumes the same id until the data model is settled.
