@@ -1,3 +1,10 @@
+<script lang="ts">
+    import { needsCall, neverCalled, vendors } from '#lib/vendor-store.ts';
+
+    const toCall = $derived($vendors.filter(needsCall));
+    const notCalled = $derived(toCall.filter(neverCalled).length);
+</script>
+
 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
     <!-- Left Column (50% width on desktop) -->
     <div class="card bg-base-100 border border-base-200 shadow-sm p-2">
@@ -13,6 +20,31 @@
         </header>
         <!-- Task Alert List -->
         <div class="space-y-3">
+            <!-- Call tasks: live from the vendor store -->
+            <div
+                class="bg-base-200/40 border border-base-200 rounded-lg p-3.5 flex items-center justify-between gap-4"
+            >
+                <div class="space-y-0.5">
+                    <h4 class="font-bold text-sm text-base-content">Vendor Calls Due</h4>
+                    <p class="text-xs text-base-content/60">
+                        {#if toCall.length}
+                            {toCall.length} new lead{toCall.length === 1 ? '' : 's'}/application{toCall.length === 1 ? '' : 's'} to call
+                            ({notCalled} not called yet)
+                        {:else}
+                            No calls due
+                        {/if}
+                    </p>
+                </div>
+                {#if toCall.length}
+                    <a
+                        href="/applications?call=due"
+                        class="btn btn-xs sm:btn-sm border-none bg-amber-100 text-amber-800 hover:bg-amber-200 font-medium rounded-md px-3 whitespace-nowrap"
+                    >
+                        Action Required
+                    </a>
+                {/if}
+            </div>
+
             <!-- Task 1: Applications Awaiting Review -->
             <div
                 class="bg-base-200/40 border border-base-200 rounded-lg p-3.5 flex items-center justify-between gap-4"

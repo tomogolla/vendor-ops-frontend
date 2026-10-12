@@ -1,11 +1,14 @@
 <script lang="ts">
     import type { PageProps } from './$types';
+    import CallActionsCard from '#lib/components/CallActionsCard.svelte';
     import SendInvoiceModal from '#lib/components/SendInvoiceModal.svelte';
     import DocumentChecklist from '#lib/components/DocumentChecklist.svelte';
     import StatusBadge from '#lib/components/StatusBadge.svelte';
     import { formatDate, formatDateTime, instagramUrl } from '#lib/format.ts';
     import {
         canTransition,
+        needsCall,
+        outcomeSuggestions,
         setStatus,
         statusLabels,
         vendors,
@@ -45,6 +48,15 @@
         vendor ? actionsByStatus[vendor.status].filter((action) => canTransition(vendor.status, action.to)) : []
     );
 
+    let dismissedSuggestion = $state('');
+    const suggestion = $derived.by(() => {
+        if (!vendor?.call.callOutcome) return null;
+        const to = outcomeSuggestions[vendor.call.callOutcome];
+        if (!to || !canTransition(vendor.status, to)) return null;
+        if (dismissedSuggestion === `${vendor.id}:${vendor.call.callOutcome}`) return null;
+        return actions.find((action) => action.to === to) ?? (to === 'declined' ? decline : null);
+    });
+
     let invoiceModal: SendInvoiceModal | undefined = $state();
     let confirmDialog: HTMLDialogElement | undefined = $state();
     let pending: Action | null = $state(null);
@@ -61,13 +73,13 @@
         return result.ok;
     }
 
-    function run(action: Action) {
+    function run(action: Action, presetNote = '') {
         actionError = '';
         if (action.kind === 'invoice') {
             invoiceModal?.showModal();
         } else if (action.kind === 'confirm') {
             pending = action;
-            note = '';
+            note = presetNote;
             confirmDialog?.showModal();
         } else {
             changeStatus(action.to);
@@ -102,7 +114,8 @@
 {#if vendor}
 <div class="rounded-box grid grid-cols-1 md:grid-cols-10 gap-4">
     <!-- Column 1 (70% width on desktop) -->
-    <div class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden md:col-span-7">
+    <div class="flex flex-col gap-4 md:col-span-7">
+    <div class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden">
         <div class="bg-base-200/60 px-6 py-3 border-b border-base-200 flex flex-wrap items-center justify-between gap-2">
             <div class="flex flex-wrap items-center gap-2">
                 <h1 class="font-semibold text-base text-base-content">{vendor.brandName}</h1>
@@ -110,6 +123,9 @@
                 <StatusBadge status={vendor.status} />
                 {#if missing.length}
                     <span class="badge badge-sm badge-warning" title={missing.join(' ')}>Incomplete</span>
+                {/if}
+                {#if needsCall(vendor)}
+                    <span class="badge badge-sm badge-info badge-outline">To call</span>
                 {/if}
             </div>
             <div class="flex gap-2">
@@ -192,6 +208,10 @@
             </dl>
         </div>
     </div>
+    {#key vendor.id}
+        <CallActionsCard {vendor} />
+    {/key}
+    </div>
 
     <!-- Column 2 Container (30% width on desktop) -->
     <div class="flex flex-col gap-4 md:col-span-3">
@@ -199,6 +219,20 @@
             <div class="card-body gap-3">
                 <h4 class="card-title">STATUS</h4>
                 <div><StatusBadge status={vendor.status} size="md" /></div>
+                {#if suggestion && vendor.call.callOutcome}
+                    {@const outcome = vendor.call.callOutcome}
+                    <div role="status" class="rounded-lg border border-info/40 bg-info/10 p-2 text-xs">
+                        <p>Last call outcome: <strong>{outcome}</strong>. Suggested next step:</p>
+                        <div class="mt-2 flex gap-2">
+                            <button type="button" class={['btn btn-xs', suggestion.tone]} disabled={busy} onclick={() => run(suggestion, `Call outcome: ${outcome}`)}>
+                                {suggestion.label}
+                            </button>
+                            <button type="button" class="btn btn-xs btn-ghost" onclick={() => (dismissedSuggestion = `${vendor.id}:${outcome}`)}>
+                                Dismiss
+                            </button>
+                        </div>
+                    </div>
+                {/if}
                 {#if actions.length}
                     <div class="flex flex-col gap-2">
                         {#each actions as action (action.label)}

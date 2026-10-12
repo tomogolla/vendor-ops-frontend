@@ -1,10 +1,11 @@
 <script lang="ts" module>
-	export type FormSection = 'status' | 'contact' | 'brand' | 'lead' | 'compliance' | 'booking';
+	export type FormSection = 'status' | 'contact' | 'brand' | 'lead' | 'call' | 'compliance' | 'booking';
 </script>
 
 <script lang="ts">
 	import { beforeNavigate } from '$app/navigation';
 	import { tick, untrack } from 'svelte';
+	import CallLogFields from '#lib/components/CallLogFields.svelte';
 	import MarketWeekendSelect from '#lib/components/MarketWeekendSelect.svelte';
 	import StatusBadge from '#lib/components/StatusBadge.svelte';
 	import {
@@ -19,6 +20,7 @@
 		emptyVendorInput,
 		findDuplicates,
 		normaliseEmail,
+		normaliseCallLog,
 		normaliseInstagram,
 		statusLabels,
 		toVendorInput,
@@ -34,7 +36,7 @@
 		initial?: Vendor;
 		/** Receives trimmed input; in create mode also the chosen starting status. */
 		onsave: (input: VendorInput, status: CreatableStatus) => Promise<unknown> | void;
-		/** Set a section to false to hide it, e.g. for a public application form. */
+		/** Set a section to false to hide it, e.g. for a public application form. The call section defaults to create mode only. */
 		fields?: Partial<Record<FormSection, boolean>>;
 		cancelHref?: string;
 	};
@@ -43,7 +45,8 @@
 
 	const uid = $props.id();
 	const id = (name: string) => `${uid}-${name}`;
-	const show = (section: FormSection) => fields[section] !== false;
+	const show = (section: FormSection) =>
+		section === 'call' ? (fields.call ?? mode === 'create') : fields[section] !== false;
 	const creatableStatuses: CreatableStatus[] = ['lead', 'applied'];
 
 	const start = untrack(() => (initial ? toVendorInput(initial) : emptyVendorInput()));
@@ -79,7 +82,8 @@
 		) as VendorInput;
 		return {
 			...trimmed,
-			tags: tagsText.split(',').map((tag) => tag.trim()).filter(Boolean)
+			tags: tagsText.split(',').map((tag) => tag.trim()).filter(Boolean),
+			call: normaliseCallLog(snapshot.call)
 		};
 	}
 
@@ -152,7 +156,7 @@
 				{#if mode === 'create'}
 					<div class="flex flex-col gap-1 max-w-xs">
 						<label class="text-sm font-medium" for={id('status')}>Starting status</label>
-						<select id={id('status')} class="select w-full" bind:value={status}>
+						<select id={id('status')} class="input-line" bind:value={status}>
 							{#each creatableStatuses as option (option)}
 								<option value={option}>{statusLabels[option]}</option>
 							{/each}
@@ -181,37 +185,37 @@
 				<div class="grid gap-4 sm:grid-cols-2">
 					<div class="flex flex-col gap-1">
 						<label class="text-sm font-medium" for={id('firstName')}>First name{mark('firstName')}</label>
-						<input id={id('firstName')} class="input w-full" autocomplete="given-name" bind:value={form.firstName} aria-invalid={invalid('firstName')} aria-describedby={describedBy('firstName')} />
+						<input id={id('firstName')} class="input-line" autocomplete="given-name" bind:value={form.firstName} aria-invalid={invalid('firstName')} aria-describedby={describedBy('firstName')} />
 						{@render fieldError('firstName')}
 					</div>
 					<div class="flex flex-col gap-1">
 						<label class="text-sm font-medium" for={id('lastName')}>Last name{mark('lastName')}</label>
-						<input id={id('lastName')} class="input w-full" autocomplete="family-name" bind:value={form.lastName} aria-invalid={invalid('lastName')} aria-describedby={describedBy('lastName')} />
+						<input id={id('lastName')} class="input-line" autocomplete="family-name" bind:value={form.lastName} aria-invalid={invalid('lastName')} aria-describedby={describedBy('lastName')} />
 						{@render fieldError('lastName')}
 					</div>
 					<div class="flex flex-col gap-1 sm:col-span-2">
 						<label class="text-sm font-medium" for={id('brandName')}>Brand name{mark('brandName')}</label>
-						<input id={id('brandName')} class="input w-full" autocomplete="organization" bind:value={form.brandName} aria-invalid={invalid('brandName')} aria-describedby={describedBy('brandName')} />
+						<input id={id('brandName')} class="input-line" autocomplete="organization" bind:value={form.brandName} aria-invalid={invalid('brandName')} aria-describedby={describedBy('brandName')} />
 						{@render fieldError('brandName')}
 					</div>
 					<div class="flex flex-col gap-1">
 						<label class="text-sm font-medium" for={id('email')}>Email{mark('email')}</label>
-						<input id={id('email')} type="email" class="input w-full" autocomplete="email" bind:value={form.email} aria-invalid={invalid('email')} aria-describedby={describedBy('email')} />
+						<input id={id('email')} type="email" class="input-line" autocomplete="email" bind:value={form.email} aria-invalid={invalid('email')} aria-describedby={describedBy('email')} />
 						{@render fieldError('email')}
 					</div>
 					<div class="flex flex-col gap-1">
 						<label class="text-sm font-medium" for={id('phone')}>Phone{mark('phone')}</label>
-						<input id={id('phone')} type="tel" class="input w-full" autocomplete="tel" bind:value={form.phone} aria-invalid={invalid('phone')} aria-describedby={describedBy('phone')} />
+						<input id={id('phone')} type="tel" class="input-line" autocomplete="tel" bind:value={form.phone} aria-invalid={invalid('phone')} aria-describedby={describedBy('phone')} />
 						{@render fieldError('phone')}
 					</div>
 					<div class="flex flex-col gap-1">
 						<label class="text-sm font-medium" for={id('instagram')}>Instagram</label>
-						<input id={id('instagram')} class="input w-full" placeholder="@brand" bind:value={form.instagram} aria-invalid={invalid('instagram')} aria-describedby={describedBy('instagram')} />
+						<input id={id('instagram')} class="input-line" placeholder="@brand" bind:value={form.instagram} aria-invalid={invalid('instagram')} aria-describedby={describedBy('instagram')} />
 						{@render fieldError('instagram')}
 					</div>
 					<div class="flex flex-col gap-1">
 						<label class="text-sm font-medium" for={id('website')}>Website</label>
-						<input id={id('website')} type="url" class="input w-full" placeholder="https://" autocomplete="url" bind:value={form.website} aria-invalid={invalid('website')} aria-describedby={describedBy('website')} />
+						<input id={id('website')} type="url" class="input-line" placeholder="https://" autocomplete="url" bind:value={form.website} aria-invalid={invalid('website')} aria-describedby={describedBy('website')} />
 						{@render fieldError('website')}
 					</div>
 				</div>
@@ -226,7 +230,7 @@
 				<div class="grid gap-4 sm:grid-cols-2">
 					<div class="flex flex-col gap-1">
 						<label class="text-sm font-medium" for={id('category')}>Category{mark('category')}</label>
-						<select id={id('category')} class="select w-full" bind:value={form.category} aria-invalid={invalid('category')} aria-describedby={describedBy('category')}>
+						<select id={id('category')} class="input-line" bind:value={form.category} aria-invalid={invalid('category')} aria-describedby={describedBy('category')}>
 							<option value="">Choose a category</option>
 							{#each categories as option (option)}
 								<option value={option}>{option}</option>
@@ -236,7 +240,7 @@
 					</div>
 					<div class="flex flex-col gap-1">
 						<label class="text-sm font-medium" for={id('commitmentLevel')}>Commitment level</label>
-						<select id={id('commitmentLevel')} class="select w-full" bind:value={form.commitmentLevel}>
+						<select id={id('commitmentLevel')} class="input-line" bind:value={form.commitmentLevel}>
 							<option value="">Not answered</option>
 							{#each commitmentLevels as option (option)}
 								<option value={option}>{option}</option>
@@ -245,15 +249,15 @@
 					</div>
 					<div class="flex flex-col gap-1 sm:col-span-2">
 						<label class="text-sm font-medium" for={id('aboutBrand')}>About the brand</label>
-						<textarea id={id('aboutBrand')} class="textarea w-full" rows="3" bind:value={form.aboutBrand}></textarea>
+						<textarea id={id('aboutBrand')} class="input-line" rows="3" bind:value={form.aboutBrand}></textarea>
 					</div>
 					<div class="flex flex-col gap-1 sm:col-span-2">
 						<label class="text-sm font-medium" for={id('objectives')}>Objectives for joining The Good Flea</label>
-						<textarea id={id('objectives')} class="textarea w-full" rows="2" bind:value={form.objectives}></textarea>
+						<textarea id={id('objectives')} class="input-line" rows="2" bind:value={form.objectives}></textarea>
 					</div>
 					<div class="flex flex-col gap-1 sm:col-span-2">
 						<label class="text-sm font-medium" for={id('otherMarkets')}>Other markets</label>
-						<input id={id('otherMarkets')} class="input w-full" bind:value={form.otherMarkets} />
+						<input id={id('otherMarkets')} class="input-line" bind:value={form.otherMarkets} />
 					</div>
 				</div>
 			</div>
@@ -267,7 +271,7 @@
 				<div class="grid gap-4 sm:grid-cols-2">
 					<div class="flex flex-col gap-1">
 						<label class="text-sm font-medium" for={id('leadSource')}>Lead source</label>
-						<select id={id('leadSource')} class="select w-full" bind:value={form.leadSource}>
+						<select id={id('leadSource')} class="input-line" bind:value={form.leadSource}>
 							<option value="">Unknown</option>
 							{#each leadSourceOptions as option (option)}
 								<option value={option}>{option}</option>
@@ -276,14 +280,28 @@
 					</div>
 					<div class="flex flex-col gap-1">
 						<label class="text-sm font-medium" for={id('tags')}>Tags</label>
-						<input id={id('tags')} class="input w-full" placeholder="VIP, Returning" bind:value={tagsText} aria-describedby={id('tags-hint')} />
+						<input id={id('tags')} class="input-line" placeholder="VIP, Returning" bind:value={tagsText} aria-describedby={id('tags-hint')} />
 						<p id={id('tags-hint')} class="text-xs text-base-content/60">Separate tags with commas.</p>
 					</div>
 					<div class="flex flex-col gap-1 sm:col-span-2">
 						<label class="text-sm font-medium" for={id('notes')}>Notes</label>
-						<textarea id={id('notes')} class="textarea w-full" rows="3" bind:value={form.notes}></textarea>
+						<textarea id={id('notes')} class="input-line" rows="3" bind:value={form.notes}></textarea>
 					</div>
 				</div>
+			</div>
+		</section>
+	{/if}
+
+	{#if show('call')}
+		<section class="card bg-base-100 border border-base-200 shadow-sm">
+			<div class="card-body gap-4">
+				<div>
+					<h2 class="card-title text-sm">Call</h2>
+					<p class="text-xs text-base-content/60">
+						Optional. Leave the outcome as "Not called yet" and this vendor shows up as a call task.
+					</p>
+				</div>
+				<CallLogFields bind:value={form.call} idPrefix={id('call')} {errors} />
 			</div>
 		</section>
 	{/if}
@@ -295,7 +313,7 @@
 				<div class="grid gap-4 sm:grid-cols-2">
 					<div class="flex flex-col gap-1">
 						<label class="text-sm font-medium" for={id('businessRegistration')}>Business registration</label>
-						<select id={id('businessRegistration')} class="select w-full" bind:value={form.businessRegistration}>
+						<select id={id('businessRegistration')} class="input-line" bind:value={form.businessRegistration}>
 							{#each businessRegistration as option (option)}
 								<option value={option}>{option}</option>
 							{/each}
@@ -303,7 +321,7 @@
 					</div>
 					<div class="flex flex-col gap-1">
 						<label class="text-sm font-medium" for={id('liabilityInsurance')}>General liability insurance</label>
-						<select id={id('liabilityInsurance')} class="select w-full" bind:value={form.liabilityInsurance}>
+						<select id={id('liabilityInsurance')} class="input-line" bind:value={form.liabilityInsurance}>
 							{#each liabilityInsurance as option (option)}
 								<option value={option}>{option}</option>
 							{/each}
@@ -321,7 +339,7 @@
 				<div class="grid gap-4 sm:grid-cols-2">
 					<div class="flex flex-col gap-1">
 						<label class="text-sm font-medium" for={id('proposedBoothSize')}>Proposed booth size</label>
-						<select id={id('proposedBoothSize')} class="select w-full" bind:value={form.proposedBoothSize}>
+						<select id={id('proposedBoothSize')} class="input-line" bind:value={form.proposedBoothSize}>
 							<option value="">Not sure yet</option>
 							{#each boothSizes as option (option)}
 								<option value={option}>{option}</option>

@@ -2,27 +2,47 @@
     import { page } from '$app/state';
     import CsvImportDialog from '#lib/components/CsvImportDialog.svelte';
     import VendorTable from '#lib/components/VendorTable.svelte';
-    import { statusLabels, vendors, type VendorStatus } from '#lib/vendor-store.ts';
+    import {
+        needsCall,
+        neverCalled,
+        statusLabels,
+        vendors,
+        type Vendor,
+        type VendorStatus
+    } from '#lib/vendor-store.ts';
 
     const pipeline: VendorStatus[] = ['lead', 'applied', 'in_review', 'waitlisted'];
-    type Filter = VendorStatus | 'all';
+    type Tab = { key: string; label: string; href: string; match: (vendor: Vendor) => boolean };
 
-    const requested = $derived(page.url.searchParams.get('status'));
-    const active: Filter = $derived(pipeline.find((status) => status === requested) ?? 'all');
+    const statusTabs: Tab[] = [
+        { key: 'all', label: 'All pipeline', href: '/applications', match: () => true },
+        ...pipeline.map((status) => ({
+            key: status,
+            label: statusLabels[status],
+            href: `/applications?status=${status}`,
+            match: (vendor: Vendor) => vendor.status === status
+        }))
+    ];
+    const callTabs: Tab[] = [
+        { key: 'call-due', label: 'To call', href: '/applications?call=due', match: needsCall },
+        { key: 'call-none', label: 'Not called', href: '/applications?call=none', match: neverCalled }
+    ];
+    const allTabs = [...statusTabs, ...callTabs];
+
+    const activeKey = $derived.by(() => {
+        const call = page.url.searchParams.get('call');
+        if (call === 'due' || call === 'none') return `call-${call}`;
+        const status = page.url.searchParams.get('status');
+        return pipeline.find((item) => item === status) ?? 'all';
+    });
     const inPipeline = $derived(
         $vendors
             .filter((vendor) => pipeline.includes(vendor.status))
             .toSorted((a, b) => b.createdAt.localeCompare(a.createdAt))
     );
-    const rows = $derived(active === 'all' ? inPipeline : inPipeline.filter((vendor) => vendor.status === active));
-    const tabs = $derived([
-        { key: 'all' as Filter, label: 'All pipeline', count: inPipeline.length },
-        ...pipeline.map((status) => ({
-            key: status as Filter,
-            label: statusLabels[status],
-            count: inPipeline.filter((vendor) => vendor.status === status).length
-        }))
-    ]);
+    const activeTab = $derived(allTabs.find((tab) => tab.key === activeKey) ?? statusTabs[0]);
+    const rows = $derived(inPipeline.filter(activeTab.match));
+    const count = (tab: Tab) => inPipeline.filter(tab.match).length;
 
     let importDialog: CsvImportDialog | undefined = $state();
 </script>
@@ -42,19 +62,25 @@
     </header>
 
     <div class="flex flex-col gap-2 p-2">
-        <nav aria-label="Filter by status" class="tabs tabs-box tabs-sm w-fit flex-wrap">
-            {#each tabs as tab (tab.key)}
-                <a
-                    href={tab.key === 'all' ? '/applications' : `/applications?status=${tab.key}`}
-                    class={['tab gap-1', active === tab.key && 'tab-active']}
-                    aria-current={active === tab.key ? 'page' : undefined}
-                >
-                    {tab.label} <span class="text-xs opacity-60">{tab.count}</span>
-                </a>
-            {/each}
-        </nav>
+        {#snippet tabList(label: string, tabs: Tab[])}
+            <nav aria-label={label} class="tabs tabs-box tabs-sm w-fit flex-wrap">
+                {#each tabs as tab (tab.key)}
+                    <a
+                        href={tab.href}
+                        class={['tab gap-1', activeKey === tab.key && 'tab-active']}
+                        aria-current={activeKey === tab.key ? 'page' : undefined}
+                    >
+                        {tab.label} <span class="text-xs opacity-60">{count(tab)}</span>
+                    </a>
+                {/each}
+            </nav>
+        {/snippet}
+        <div class="flex flex-wrap items-center gap-2">
+            {@render tabList('Filter by status', statusTabs)}
+            {@render tabList('Filter by call status', callTabs)}
+        </div>
         <div class="overflow-hidden rounded-lg border border-base-200">
-            <VendorTable vendors={rows} emptyMessage="No applications with this status." />
+            <VendorTable vendors={rows} emptyMessage="No applications match this filter." />
         </div>
     </div>
 </div>

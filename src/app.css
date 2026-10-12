@@ -75,3 +75,31 @@ body {
 .bg-brand {
   background-color: var(--brand-color);
 }
+/* Borderless, underline-only field used on the vendor/lead forms. */
+.input-line {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid var(--color-base-300);
+  border-radius: 0;
+  padding: 0.25rem 0;
+  font-size: 0.75rem;
+  color: var(--color-base-content);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.input-line::placeholder {
+  color: color-mix(in oklab, var(--color-base-content) 40%, transparent);
+}
+.input-line:focus {
+  border-bottom-color: var(--brand-color);
+}
+.input-line[aria-invalid='true'] {
+  border-bottom-color: var(--color-error);
+}
+select.input-line {
+  cursor: pointer;
+}
+textarea.input-line {
+  resize: vertical;
+}
