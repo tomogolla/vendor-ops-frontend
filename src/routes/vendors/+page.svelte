@@ -1,109 +1,43 @@
-<script>
+<script lang="ts">
+    import { page } from '$app/state';
+    import VendorTable from '#lib/components/VendorTable.svelte';
+    import { vendors } from '#lib/vendor-store.ts';
+
+    const filters = [
+        { key: 'approved', label: 'Approved' },
+        { key: 'suspended', label: 'Suspended' },
+        { key: 'all', label: 'All' }
+    ] as const;
+    type Filter = (typeof filters)[number]['key'];
+
+    const requested = $derived(page.url.searchParams.get('status'));
+    const active: Filter = $derived(filters.find((filter) => filter.key === requested)?.key ?? 'approved');
+    const sorted = $derived($vendors.toSorted((a, b) => a.brandName.localeCompare(b.brandName)));
+    const countFor = (key: Filter) =>
+        key === 'all' ? sorted.length : sorted.filter((vendor) => vendor.status === key).length;
+    const rows = $derived(active === 'all' ? sorted : sorted.filter((vendor) => vendor.status === active));
 </script>
 
-<div class="overflow-x-auto bg-base-400 rounded-lg shadow-sm">
-        <table class="table table-zebra w-full text-left">
-        <!-- head -->
-        <thead class="text-xs font-semibold text-slate-500 uppercase tracking-wider bg-base-300">
-            <tr>
-                <th></th>
-                <th>Brand Name</th>
-                <th>Contact</th>
-                <th>Booking State</th>
-                <th>Category</th>
-                <th>Phone</th>
-                <th>Instagram</th>
-                <th>Lead Source</th>
-                <th>Tags</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- row 1 -->
-            <tr class="hover">
-                <th>1</th>
-                <td class="font-bold text-slate-900"><a href="/vendors/1" class="hover:underline">Acme Corporation</a></td>
-                <td>
-                    <div class="text-sm font-medium">Cy Ganderton</div>
-                    <div class="text-xs text-slate-400">cy@acme.com</div>
-                </td>
-                <td>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Confirmed</span>
-                </td>
-                <td>Corporate Gala</td>
-                <td>(555) 123-4567</td>
-                <td><a href="https://instagram.com" target="_blank" class="text-blue-600 hover:underline">@acme</a></td>
-                <td>LinkedIn Referral</td>
-                <td>
-                    <div class="flex gap-1">
-                        <span class="px-1.5 py-0.5 text-[10px] bg-slate-100 rounded text-slate-600">VIP</span>
-                        <span class="px-1.5 py-0.5 text-[10px] bg-blue-100 rounded text-blue-600">Tier-1</span>
-                    </div>
-                </td>
-            </tr>
-            <!-- row 2 -->
-            <tr class="hover">
-                <th>2</th>
-                <td class="font-bold text-slate-900"><a href="/vendors/2" class="hover:underline">Stark Industries</a></td>
-                <td>
-                    <div class="text-sm font-medium">Hart Hagerty</div>
-                    <div class="text-xs text-slate-400">hart@stark.com</div>
-                </td>
-                <td>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">In Dunning</span>
-                </td>
-                <td>Exhibition Booth</td>
-                <td>(555) 987-6543</td>
-                <td><a href="https://instagram.com" target="_blank" class="text-blue-600 hover:underline">@starkind</a></td>
-                <td>Google Search</td>
-                <td>
-                    <div class="flex gap-1">
-                        <span class="px-1.5 py-0.5 text-[10px] bg-amber-100 rounded text-amber-600">Late Pay</span>
-                    </div>
-                </td>
-            </tr>
-            <!-- row 3 -->
-            <tr class="hover">
-                <th>3</th>
-                <td class="font-bold text-slate-900"><a href="/vendors/3" class="hover:underline">Wayne Enterprises</a></td>
-                <td>
-                    <div class="text-sm font-medium">Brice Swyre</div>
-                    <div class="text-xs text-slate-400">brice@wayne.co</div>
-                </td>
-                <td>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">Draft</span>
-                </td>
-                <td>Charity Auction</td>
-                <td>(555) 555-5555</td>
-                <td><a href="https://instagram.com" target="_blank" class="text-blue-600 hover:underline">@wayne_ent</a></td>
-                <td>Cold Email Loop</td>
-                <td>
-                    <div class="flex gap-1">
-                        <span class="px-1.5 py-0.5 text-[10px] bg-purple-100 rounded text-purple-600">Sponsor</span>
-                    </div>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+<svelte:head><title>Vendors · Vendor Ops</title></svelte:head>
+
+<div class="bg-base-100 w-full shadow-sm border border-base-200 rounded-lg">
+    <header class="flex flex-wrap items-center justify-between gap-2 bg-[#f4f4f4] px-4 py-3">
+        <h1 class="text-base font-bold">Vendors</h1>
+    </header>
+    <div class="flex flex-col gap-2 p-2">
+        <nav aria-label="Filter by status" class="tabs tabs-box tabs-sm w-fit">
+            {#each filters as filter (filter.key)}
+                <a
+                    href={filter.key === 'approved' ? '/vendors' : `/vendors?status=${filter.key}`}
+                    class={['tab gap-1', active === filter.key && 'tab-active']}
+                    aria-current={active === filter.key ? 'page' : undefined}
+                >
+                    {filter.label} <span class="text-xs opacity-60">{countFor(filter.key)}</span>
+                </a>
+            {/each}
+        </nav>
+        <div class="overflow-hidden rounded-lg border border-base-200">
+            <VendorTable vendors={rows} emptyMessage="No vendors with this status." />
+        </div>
+    </div>
 </div>
-
-
-<style>
-  .rounded-box {
-    padding: 0.75rem;
-    background-color: #f4f4f4;
-    border-radius: 0.5rem; /* Adjust this value to change the roundness */
-    margin-bottom: 1rem; /* Optional: adds space below the box */
-  }
-  .btn-outline {
-    border-color: var(--brand-color);
-    color: var(--brand-color);
-  }
-  .btn-outline:hover {
-    background-color: var(--brand-color);
-    color: white;
-  }
-  .btn-sm {
-    background-color: var(--brand-color);
-    color: white;
-  }
-</style>
