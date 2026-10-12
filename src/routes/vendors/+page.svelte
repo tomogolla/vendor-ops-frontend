@@ -1,26 +1,6 @@
 <script>
 </script>
 
-<div class="rounded-box">
-
-  <dialog id="my_modal_2" class="modal">
-    <div class="modal-box">
-    <h2>Import vendors CSV</h2>
-      <fieldset class="fieldset">
-        <legend class="fieldset-legend">Pick a file</legend>
-        <input type="file" class="file-input" />
-        <p class="label">Max size 2MB</p>
-      </fieldset>
-      <div class="modal-action">
-        <form method="dialog">
-          <!-- if there is a button in form, it will close the modal -->
-          <button class="btn btn-sm">Close</button>
-        </form>
-      </div>
-    </div>
-  </dialog>
-</div>
-
 <div class="overflow-x-auto bg-base-400 rounded-lg shadow-sm">
         <table class="table table-zebra w-full text-left">
         <!-- head -->

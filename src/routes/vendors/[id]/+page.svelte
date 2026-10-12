@@ -33,12 +33,7 @@
 
             <!-- Back Button Link (Right Side) -->
              <div class="flex gap-2">
-                 <button
-                    type="button"
-                    class="btn btn-primary btn-sm text-xs font-semibold"
-                    onclick={() => approveModal?.showModal()}
-                >Edit Vendor Details
-                </button>
+                
                  <a
                 href="/vendors"
                 class="btn btn-primary btn-sm text-xs font-semibold"
