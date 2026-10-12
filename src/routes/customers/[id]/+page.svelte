@@ -4,7 +4,6 @@
     import DocumentChecklist from '#lib/components/DocumentChecklist.svelte';
 
     let { data }: PageProps = $props();
-    let approveModal: HTMLDialogElement | undefined = $state(undefined);
     // TODO(decision): vendors vs customers — contact link assumes the same id until the data model is settled.
     // outcome vendors are separate from customers
     const contactHref = $derived(`/customers/${data.id}`);
@@ -137,33 +136,6 @@
                     </ul>
                 </div>
             </div>
-        <div
-            class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden"
-        >
-            <div class="card-body gap-4">
-                <h4 class="card-title">DECISION ACTIONS</h4>
-
-                <!-- Top Row: Full Width Primary Action -->
-                
-                <!-- You can open the modal using ID.showModal() method -->
-                <button
-                    type="button"
-                    class="btn btn-primary btn-outline w-full"
-                    onclick={() => approveModal?.showModal()}
-                    >Accept Application
-                </button>
-                <!-- Bottom Row: 50% / 50% Secondary Actions -->
-                <div class="grid grid-cols-2 gap-3 w-full">
-                    <button class="btn btn-neutral btn-outline w-full"
-                        >Waitlist</button
-                    >
-                    <button class="btn btn-error btn-outline w-full"
-                        >Decline</button
-                    >
-                </div>
-            </div>
-            
-        </div>
     </div>
 </div>
 
@@ -176,12 +148,5 @@
         font-size: 0.75rem;
         text-decoration: underline;
         text-decoration-color: var(--brand-color);
-    }
-    
-    .btn-primary {
-        background-color: var(--brand-color);
-        border-color: var(--brand-color);
-        box-shadow: 0 0 0 3px var(--brand-color);
-        color: white;
     }
 </style>
