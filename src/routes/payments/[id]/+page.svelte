@@ -84,7 +84,7 @@
          </div>
 
     <!-- Right Column (50% width on desktop) -->
-    <div class="card bg-base-100 border border-base-200 shadow-sm p-6">
+    <div class="card bg-base-100 border border-base-200 shadow-sm p-2">
         <div
                 class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden"
             >
@@ -94,6 +94,7 @@
                         <li><button type="button">Assign brand</button></li>
                         <li><button type="button">Send payment receipt to customer</button></li>
                         <li><button type="button">Send payment reminder</button></li>
+                        <li><button type="button">Mark paid</button></li>
                     </ul>
                 </div>
             </div>

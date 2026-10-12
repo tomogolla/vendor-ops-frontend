@@ -187,7 +187,7 @@
                                 <td>
                                     <span
                                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800"
-                                        >In Dunning</span
+                                        >Pending</span
                                     >
                                 </td>
                                 <td>Ceramics</td>
@@ -358,7 +358,7 @@
                 >
                     <span
                         class="font-semibold text-xs text-base-content/70 uppercase tracking-wider"
-                        >Schedule</span
+                        >Scheduled vendors/paid/pending invoices</span
                     >
                 </header>
                 <div
@@ -446,7 +446,7 @@
                                 <td>
                                     <span
                                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800"
-                                        >In Dunning</span
+                                        >Paid</span
                                     >
                                 </td>
                                 <td>Ceramics</td>
@@ -704,7 +704,7 @@
                                 <td>
                                     <span
                                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800"
-                                        >In Dunning</span
+                                        >Pending</span
                                     >
                                 </td>
                                 <td>Ceramics</td>
