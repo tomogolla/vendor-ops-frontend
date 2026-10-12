@@ -119,7 +119,7 @@
             <!-- Row 6 -->
             <div class="pb-4">
                 <h4 class="text-sm font-semibold text-slate-900 mb-1">Proposed booth dimensions</h4>
-                <p class="text-xs text-slate-500 leading-relaxed">{vendor.boothDimensions || '—'}</p>
+                <p class="text-xs text-slate-500 leading-relaxed">{vendor.proposedBoothSize || '—'}</p>
             </div>
             <!-- Row 6 -->
             <div class="pb-4">
