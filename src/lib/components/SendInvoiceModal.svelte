@@ -1,6 +1,5 @@
 <script lang="ts">
     let dialog = $state<HTMLDialogElement>();
-
     let emailSubject = $state(
         "Welcome to The Good Flea! Your Application Has Been Approved",
     );
@@ -37,11 +36,11 @@ The Good Flea Team`);
                 style="background-color: var(--brand-color);"
             >
                 <h3 class="font-bold text-lg">
-                    Approve Vendor & Send Invoice
+                    Send Invoice
                 </h3>
                 <p>
                     Review your acceptance message and attach
-                    their Shopify booth invoice.
+                    their Shopify/Stripe booth invoice.
                 </p>
             </div>
         </form>
@@ -691,20 +690,20 @@ The Good Flea Team`);
             </fieldset>
             <!-- Modal Actions -->
             <div class="modal-action pt-2 flex justify-end gap-2">
-            <button
-                type="button"
-                class="btn"
-                onclick={() => dialog?.close()}
-            >
-                Cancel
-            </button>
-            <button
-                type="submit"
-                class="btn text-white border-none"
-                style="background-color: var(--brand-color);"
-            >
-                Send Acceptance & Invoice
-            </button>
+                <button
+                    type="button"
+                    class="btn"
+                    onclick={() => dialog?.close()}
+                >
+                    Cancel
+                </button>
+                <button
+                    type="submit"
+                    class="btn text-white border-none"
+                    style="background-color: var(--brand-color);"
+                >
+                    Send Acceptance + Invoice
+                </button>
             </div>
         </form>
     </div>

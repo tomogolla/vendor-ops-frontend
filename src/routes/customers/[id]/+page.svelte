@@ -1,13 +1,15 @@
 <script lang="ts">
     import type { PageProps } from './$types';
-    import ApproveVendorModal from '#lib/components/ApproveVendorModal.svelte';
+
     import DocumentChecklist from '#lib/components/DocumentChecklist.svelte';
 
     let { data }: PageProps = $props();
+    let approveModal: HTMLDialogElement | undefined = $state(undefined);
     // TODO(decision): vendors vs customers — contact link assumes the same id until the data model is settled.
+    // outcome vendors are separate from customers
     const contactHref = $derived(`/customers/${data.id}`);
 
-    let approveModal: ApproveVendorModal | undefined = $state();
+
 </script>
 
 <div class="rounded-box grid grid-cols-1 md:grid-cols-10 gap-4">
@@ -150,7 +152,6 @@
                     onclick={() => approveModal?.showModal()}
                     >Accept Application
                 </button>
-                <ApproveVendorModal bind:this={approveModal} />
                 <!-- Bottom Row: 50% / 50% Secondary Actions -->
                 <div class="grid grid-cols-2 gap-3 w-full">
                     <button class="btn btn-neutral btn-outline w-full"
