@@ -1,0 +1,73 @@
+name: Frontend CI/CD
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-production
+  cancel-in-progress: false
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_API_BASE: /api/v1
+      - uses: actions/upload-artifact@v4
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+        with:
+          name: frontend-build
+          path: build
+          if-no-files-found: error
+          retention-days: 3
+
+  deploy:
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: build
+      - name: Package release
+        run: tar -czf frontend-release.tar.gz build deploy/deploy-frontend.sh
+      - name: Configure SSH
+        env:
+          SSH_HOST: ${{ secrets.DROPLET_HOST }}
+          SSH_KEY: ${{ secrets.DROPLET_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.DROPLET_SSH_KNOWN_HOSTS }}
+          SSH_PORT: ${{ secrets.DROPLET_SSH_PORT || '22' }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - name: Upload and activate release
+        env:
+          SSH_HOST: ${{ secrets.DROPLET_HOST }}
+          SSH_USER: ${{ secrets.DROPLET_USER }}
+          SSH_PORT: ${{ secrets.DROPLET_SSH_PORT || '22' }}
+          RELEASE_ID: ${{ github.sha }}
+        run: |
+          remote_artifact="/tmp/vendor-ops-frontend-${RELEASE_ID}.tar.gz"
+          scp -P "$SSH_PORT" frontend-release.tar.gz "$SSH_USER@$SSH_HOST:$remote_artifact"
+          ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p /tmp/vendor-ops-frontend-${RELEASE_ID} && tar -xzf '$remote_artifact' -C /tmp/vendor-ops-frontend-${RELEASE_ID} deploy/deploy-frontend.sh && sudo bash /tmp/vendor-ops-frontend-${RELEASE_ID}/deploy/deploy-frontend.sh '$remote_artifact' '$RELEASE_ID'"
