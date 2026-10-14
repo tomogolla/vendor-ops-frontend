@@ -186,6 +186,120 @@ export async function deleteAddOn(weekendId: string, id: string): Promise<void> 
 	await request(`/market-weekends/${weekendId}/add-ons/${id}/`, { method: 'DELETE' });
 }
 
+// --- Weekend editor drafts ---------------------------------------------------------------------
+
+export type VariantDraft = {
+	key: string;
+	id: string | null;
+	name: string;
+	dimensions: string;
+	/** Dollars as typed. */
+	price: string;
+	capacity: number | null;
+	removed: boolean;
+};
+
+export type AddOnDraft = {
+	key: string;
+	id: string | null;
+	name: string;
+	price: string;
+	/** Blank means unlimited. */
+	capacity: number | null;
+	removed: boolean;
+};
+
+export type CatalogOp =
+	| { kind: 'variant'; op: 'create'; key: string; input: VariantInput }
+	| { kind: 'variant'; op: 'update'; key: string; id: string; patch: Partial<VariantInput> }
+	| { kind: 'variant'; op: 'delete'; key: string; id: string }
+	| { kind: 'add_on'; op: 'create'; key: string; input: AddOnInput }
+	| { kind: 'add_on'; op: 'update'; key: string; id: string; patch: Partial<AddOnInput> }
+	| { kind: 'add_on'; op: 'delete'; key: string; id: string };
+
+const blankCapacity = (value: number | null | undefined) => value === null || value === undefined || (value as unknown) === '';
+
+/** Field errors per draft key; empty when every kept row is valid. */
+export function validateCatalogDrafts(
+	variants: readonly VariantDraft[],
+	addOns: readonly AddOnDraft[],
+	parseDollars: (text: string) => number | null
+): Record<string, string> {
+	const errors: Record<string, string> = {};
+	const check = (rows: readonly (VariantDraft | AddOnDraft)[], capacityRequired: boolean) => {
+		const names = new Set<string>();
+		for (const row of rows) {
+			if (row.removed) continue;
+			const name = row.name.trim().toLowerCase();
+			const capacity = row.capacity;
+			if (!name) errors[row.key] = 'Name is required.';
+			else if (names.has(name)) errors[row.key] = 'Names must be unique within the weekend.';
+			else if (parseDollars(row.price) === null) errors[row.key] = 'Enter a price in dollars, for example 150 or 150.00.';
+			else if (capacityRequired && blankCapacity(capacity)) errors[row.key] = 'Capacity is required.';
+			else if (!blankCapacity(capacity) && (!Number.isInteger(capacity) || (capacity as number) < 0)) {
+				errors[row.key] = 'Capacity must be a whole number, 0 or more.';
+			}
+			names.add(name);
+		}
+	};
+	check(variants, true);
+	check(addOns, false);
+	return errors;
+}
+
+/** The API calls that turn `weekend`'s products into the drafts. Unchanged rows produce nothing.
+ * Assumes validateCatalogDrafts passed. */
+export function planCatalogSave(
+	weekend: Pick<MarketWeekend, 'variants' | 'addOns'> | null,
+	variants: readonly VariantDraft[],
+	addOns: readonly AddOnDraft[],
+	parseDollars: (text: string) => number | null
+): CatalogOp[] {
+	const ops: CatalogOp[] = [];
+	const capacityOf = (value: number | null) => (blankCapacity(value) ? null : value);
+	for (const draft of variants) {
+		const input: VariantInput = {
+			name: draft.name.trim(),
+			dimensions: draft.dimensions.trim(),
+			priceCents: parseDollars(draft.price) ?? 0,
+			capacity: draft.capacity ?? 0
+		};
+		const original = draft.id ? weekend?.variants.find((variant) => variant.id === draft.id) : undefined;
+		if (draft.removed) {
+			if (draft.id) ops.push({ kind: 'variant', op: 'delete', key: draft.key, id: draft.id });
+		} else if (!draft.id || !original) {
+			ops.push({ kind: 'variant', op: 'create', key: draft.key, input });
+		} else {
+			const patch: Partial<VariantInput> = {};
+			if (input.name !== original.name) patch.name = input.name;
+			if (input.dimensions !== original.dimensions) patch.dimensions = input.dimensions;
+			if (input.priceCents !== original.priceCents) patch.priceCents = input.priceCents;
+			if (input.capacity !== original.capacity) patch.capacity = input.capacity;
+			if (Object.keys(patch).length) ops.push({ kind: 'variant', op: 'update', key: draft.key, id: draft.id, patch });
+		}
+	}
+	for (const draft of addOns) {
+		const input: AddOnInput = {
+			name: draft.name.trim(),
+			priceCents: parseDollars(draft.price) ?? 0,
+			capacity: capacityOf(draft.capacity)
+		};
+		const original = draft.id ? weekend?.addOns.find((addOn) => addOn.id === draft.id) : undefined;
+		if (draft.removed) {
+			if (draft.id) ops.push({ kind: 'add_on', op: 'delete', key: draft.key, id: draft.id });
+		} else if (!draft.id || !original) {
+			ops.push({ kind: 'add_on', op: 'create', key: draft.key, input });
+		} else {
+			const patch: Partial<AddOnInput> = {};
+			if (input.name !== original.name) patch.name = input.name;
+			if (input.priceCents !== original.priceCents) patch.priceCents = input.priceCents;
+			if (input.capacity !== original.capacity) patch.capacity = input.capacity;
+			if (Object.keys(patch).length) ops.push({ kind: 'add_on', op: 'update', key: draft.key, id: draft.id, patch });
+		}
+	}
+	return ops;
+}
+
 // --- Pure helpers ---------------------------------------------------------------------------
 
 export type CapacityDisplay = {

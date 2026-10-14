@@ -1,15 +1,16 @@
 <script lang="ts">
+	import LineDecisionDialog from '#lib/components/LineDecisionDialog.svelte';
 	import LineStatusBadge from '#lib/components/LineStatusBadge.svelte';
 	import {
 		addLine,
 		availableLineActions,
-		decideLine,
 		deleteLine,
 		linesInOrder,
 		updateLineQuantity,
 		type Application,
 		type ApplicationLine,
-		type LineAction
+		type LineAction,
+		type LineDecision
 	} from '#lib/applications.ts';
 	import { capacityDisplay, type MarketWeekend } from '#lib/catalog.ts';
 	import { formatDate, formatMoney } from '#lib/format.ts';
@@ -35,12 +36,9 @@
 			: (weekend.addOns.find((addOn) => addOn.id === line.addOnId) ?? null);
 	}
 
-	// --- Decisions with a dialog -------------------------------------------------------------
-	let dialog: HTMLDialogElement | undefined = $state();
-	let pending = $state<{ line: ApplicationLine; action: LineAction } | null>(null);
-	let reason = $state('');
+	// --- Decisions go through the shared dialog -----------------------------------------------
+	let decisionDialog: LineDecisionDialog | undefined = $state();
 	let busy = $state(false);
-	let dialogError = $state('');
 	let rowError = $state('');
 
 	function open(line: ApplicationLine, action: LineAction) {
@@ -54,10 +52,8 @@
 			if (confirm(`Remove ${line.productName} (${line.weekend.label}) from this order?`)) run(() => deleteLine(line.id));
 			return;
 		}
-		pending = { line, action };
-		reason = '';
-		dialogError = '';
-		dialog?.showModal();
+		const product = productFor(line);
+		decisionDialog?.open({ line, action: action as LineAction & { key: LineDecision }, capacity: product ? capacityDisplay(product) : null });
 	}
 
 	async function run(task: () => Promise<unknown>) {
@@ -70,28 +66,6 @@
 		} catch (error) {
 			rowError = error instanceof Error ? error.message : 'That did not work.';
 			return false;
-		} finally {
-			busy = false;
-		}
-	}
-
-	async function submitDecision(event: SubmitEvent) {
-		event.preventDefault();
-		if (!pending) return;
-		const { line, action } = pending;
-		if (action.reason === 'required' && !reason.trim()) {
-			dialogError = 'A reason is required.';
-			return;
-		}
-		busy = true;
-		dialogError = '';
-		try {
-			await decideLine(line.id, action.key as 'confirm' | 'waitlist' | 'decline' | 'release', reason);
-			dialog?.close();
-			onchanged();
-		} catch (error) {
-			// e.g. "Only 0 of 8ft x 8ft left for Oct 10 & 11; this line needs 1. Waitlist it instead."
-			dialogError = error instanceof Error ? error.message : 'That did not work.';
 		} finally {
 			busy = false;
 		}
@@ -266,41 +240,4 @@
 	</div>
 </div>
 
-<dialog bind:this={dialog} class="modal" aria-labelledby="line-decision-title">
-	<div class="modal-box max-w-md">
-		{#if pending}
-			{@const { line, action } = pending}
-			{@const product = productFor(line)}
-			<form class="flex flex-col gap-3" onsubmit={submitDecision}>
-				<h3 id="line-decision-title" class="font-bold text-base">{action.label}: {line.productName}, {line.weekend.label}</h3>
-				<p class="text-sm text-base-content/70">
-					{line.quantity} × {formatMoney(line.unitPriceCents, currency)} = {formatMoney(line.totalCents, currency)}
-				</p>
-				{#if action.key === 'confirm' && product}
-					{@const capacity = capacityDisplay(product)}
-					<div class={['rounded-lg p-2 text-sm', capacity.tone === 'full' ? 'bg-error/10' : capacity.tone === 'low' ? 'bg-warning/30' : 'bg-base-200']}>
-						<p class="font-medium">{capacity.unlimited ? 'No capacity limit' : `${Math.max(capacity.remaining ?? 0, 0)} of ${capacity.capacity} left`}</p>
-						<p class="text-xs text-base-content/70">{capacity.text}{capacity.waitlisted ? ` · ${capacity.waitlisted} waitlisted` : ''}</p>
-						{#if !capacity.unlimited && (capacity.remaining ?? 0) < line.quantity}
-							<p class="mt-1 text-xs">This line needs {line.quantity}; the server will refuse it. Waitlist it instead.</p>
-						{/if}
-					</div>
-				{:else if action.key === 'release'}
-					<p class="text-sm">Releasing gives the capacity back. Add-on lines on this booth are released too.</p>
-				{/if}
-				{#if action.reason !== 'none'}
-					<div class="flex flex-col gap-1">
-						<label class="text-sm font-medium" for="line-reason">Reason{action.reason === 'required' ? ' (required)' : ' (optional)'}</label>
-						<textarea id="line-reason" class="textarea w-full" rows="3" bind:value={reason} required={action.reason === 'required'} aria-invalid={Boolean(dialogError)}></textarea>
-					</div>
-				{/if}
-				{#if dialogError}<p role="alert" class="text-error text-sm">{dialogError}</p>{/if}
-				<div class="modal-action mt-0">
-					<button type="button" class="btn btn-sm" onclick={() => dialog?.close()}>Cancel</button>
-					<button type="submit" class={['btn btn-sm', action.tone]} disabled={busy}>{action.label}</button>
-				</div>
-			</form>
-		{/if}
-	</div>
-	<form method="dialog" class="modal-backdrop"><button aria-label="Close">close</button></form>
-</dialog>
+<LineDecisionDialog bind:this={decisionDialog} {currency} ondone={onchanged} />

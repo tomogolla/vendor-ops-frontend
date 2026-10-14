@@ -497,6 +497,36 @@ export function bookingsByWeekend(applications: readonly Application[]): { weeke
 	return [...groups.values()].sort((a, b) => a.weekend.startDate.localeCompare(b.weekend.startDate));
 }
 
+export type RosterRow = {
+	line: ApplicationLine;
+	application: Pick<Application, 'id' | 'stage' | 'vendorBrand' | 'vendorId' | 'firstPaidAt'>;
+};
+
+/** Booked (confirmed) and waitlisted lines for one weekend, built from the applications that have
+ * a line on it. TODO(backend): weekend detail does not return these lists itself. The waitlist is
+ * oldest first, as the API orders promotion suggestions. */
+export function weekendRoster(applications: readonly Application[], weekendId: string): { booked: RosterRow[]; waitlist: RosterRow[] } {
+	const booked: RosterRow[] = [];
+	const waitlist: RosterRow[] = [];
+	for (const application of applications) {
+		const ref = {
+			id: application.id,
+			stage: application.stage,
+			vendorBrand: application.vendorBrand,
+			vendorId: application.vendorId,
+			firstPaidAt: application.firstPaidAt
+		};
+		for (const line of application.lines) {
+			if (line.weekend.id !== weekendId) continue;
+			if (line.status === 'CONFIRMED') booked.push({ line, application: ref });
+			else if (line.status === 'WAITLISTED') waitlist.push({ line, application: ref });
+		}
+	}
+	booked.sort((a, b) => a.application.vendorBrand.localeCompare(b.application.vendorBrand));
+	waitlist.sort((a, b) => (a.line.waitlistedAt ?? '').localeCompare(b.line.waitlistedAt ?? ''));
+	return { booked, waitlist };
+}
+
 export const isIncompleteApplication = (application: Pick<Application, 'category'>) => !application.category;
 
 export type StageActionKey = 'start_review' | 'decline' | 'withdraw' | 'reopen' | 'mark_billed' | 'mark_first_payment';

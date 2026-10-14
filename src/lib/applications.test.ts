@@ -20,6 +20,7 @@ import {
 	orderLinesFromDrafts,
 	submissionOutcome,
 	totalsRows,
+	weekendRoster,
 	type Application,
 	type ApplicationLine,
 	type LineStatus,
@@ -137,6 +138,19 @@ describe('board grouping and days in stage', () => {
 		const oct10 = groups[0].bookings.map((booking) => `${booking.line.productName} ${booking.application.stage}`);
 		expect(oct10).toEqual(expect.arrayContaining(['10ft x 10ft AWAITING_PAYMENT', '8ft x 8ft WON', 'Tent rental WON']));
 		expect(groups.flatMap((group) => group.bookings).every((booking) => booking.line.status === 'CONFIRMED')).toBe(true);
+	});
+
+	it('builds a weekend roster of booked and waitlisted lines', () => {
+		const oct10 = won.lines[0].weekend.id;
+		const { booked, waitlist } = weekendRoster(applications, oct10);
+		expect(booked.map((row) => `${row.application.vendorBrand}: ${row.line.productName}`)).toEqual([
+			'Acme Corporation: 8ft x 8ft',
+			'Acme Corporation: Tent rental',
+			'Wayne Enterprises: 10ft x 10ft'
+		]);
+		expect(waitlist.map((row) => row.application.vendorBrand)).toEqual(['Second Spin Records']);
+		expect(booked[0].application.firstPaidAt).not.toBeNull();
+		expect(weekendRoster(applications, 'unknown')).toEqual({ booked: [], waitlist: [] });
 	});
 
 	it('counts whole days in stage', () => {
