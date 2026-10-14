@@ -1,0 +1,119 @@
+{
+	"count": 2,
+	"next": null,
+	"previous": null,
+	"results": [
+		{
+			"id": "f26cc1ce-545f-4ad0-910e-26753372f59c",
+			"label": "Oct 10 & 11",
+			"start_date": "2026-10-10",
+			"end_date": "2026-10-11",
+			"venue": "Main lot",
+			"status": "OPEN",
+			"currency": "USD",
+			"variants": [
+				{
+					"id": "180b5eac-5162-4f69-9617-11c50d4b486e",
+					"weekend": "f26cc1ce-545f-4ad0-910e-26753372f59c",
+					"name": "8ft x 8ft",
+					"dimensions": "8 x 8 ft",
+					"price_cents": 15000,
+					"capacity": 2,
+					"confirmed": 2,
+					"remaining": 0,
+					"waitlisted": 1,
+					"promotion_suggestions": [],
+					"created_at": "2026-10-14T19:29:12.558309Z",
+					"updated_at": "2026-10-14T19:29:12.558323Z"
+				},
+				{
+					"id": "bd09115b-3563-4058-8117-ac5c639f9998",
+					"weekend": "f26cc1ce-545f-4ad0-910e-26753372f59c",
+					"name": "10ft x 10ft",
+					"dimensions": "10 x 10 ft",
+					"price_cents": 22500,
+					"capacity": 4,
+					"confirmed": 1,
+					"remaining": 3,
+					"waitlisted": 0,
+					"promotion_suggestions": [],
+					"created_at": "2026-10-14T19:29:12.562365Z",
+					"updated_at": "2026-10-14T19:29:12.562379Z"
+				}
+			],
+			"add_ons": [
+				{
+					"id": "08bd1263-0004-4056-924a-0e79d9c137f5",
+					"weekend": "f26cc1ce-545f-4ad0-910e-26753372f59c",
+					"name": "Tent rental",
+					"price_cents": 4000,
+					"capacity": 3,
+					"confirmed": 1,
+					"remaining": 2,
+					"waitlisted": 0,
+					"promotion_suggestions": [],
+					"created_at": "2026-10-14T19:29:12.565641Z",
+					"updated_at": "2026-10-14T19:29:12.565654Z"
+				}
+			],
+			"created_at": "2026-10-14T19:29:12.552395Z",
+			"updated_at": "2026-10-14T19:29:12.552409Z"
+		},
+		{
+			"id": "9cba3fda-8ecb-4216-84d3-c7156656efec",
+			"label": "Oct 17 & 18",
+			"start_date": "2026-10-17",
+			"end_date": "2026-10-18",
+			"venue": "Main lot",
+			"status": "OPEN",
+			"currency": "USD",
+			"variants": [
+				{
+					"id": "b4ff350e-d579-415f-9374-acf2f6cded2d",
+					"weekend": "9cba3fda-8ecb-4216-84d3-c7156656efec",
+					"name": "8ft x 8ft",
+					"dimensions": "8 x 8 ft",
+					"price_cents": 15000,
+					"capacity": 12,
+					"confirmed": 1,
+					"remaining": 11,
+					"waitlisted": 0,
+					"promotion_suggestions": [],
+					"created_at": "2026-10-14T19:29:12.563393Z",
+					"updated_at": "2026-10-14T19:29:12.563406Z"
+				},
+				{
+					"id": "172cad73-c233-4428-8d1e-638c02832614",
+					"weekend": "9cba3fda-8ecb-4216-84d3-c7156656efec",
+					"name": "10ft x 10ft",
+					"dimensions": "10 x 10 ft",
+					"price_cents": 22500,
+					"capacity": 4,
+					"confirmed": 0,
+					"remaining": 4,
+					"waitlisted": 0,
+					"promotion_suggestions": [],
+					"created_at": "2026-10-14T19:29:12.564460Z",
+					"updated_at": "2026-10-14T19:29:12.564475Z"
+				}
+			],
+			"add_ons": [
+				{
+					"id": "57df3fb3-a706-4995-9898-63c282b271db",
+					"weekend": "9cba3fda-8ecb-4216-84d3-c7156656efec",
+					"name": "Table",
+					"price_cents": 1000,
+					"capacity": null,
+					"confirmed": 1,
+					"remaining": null,
+					"waitlisted": 0,
+					"promotion_suggestions": [],
+					"created_at": "2026-10-14T19:29:12.569965Z",
+					"updated_at": "2026-10-14T19:29:12.569997Z"
+				}
+			],
+			"created_at": "2026-10-14T19:29:12.556827Z",
+			"updated_at": "2026-10-14T19:29:12.556846Z"
+		}
+	]
+}

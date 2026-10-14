@@ -1,9 +1,9 @@
-// API client layer for vendors, applications, tasks, activity and imports. Data lives in
-// PostgreSQL behind the Django API; nothing here is cached in browser storage.
+// API client layer for vendors, tasks, activity, notes and imports (applications live in
+// #lib/applications.ts, the catalog in #lib/catalog.ts). Data lives in PostgreSQL behind the Django
+// API; nothing here is cached in browser storage.
 import { ApiError, request, type Page, type Query } from '#lib/api.ts';
 import {
 	MAX_CALL_ATTEMPTS,
-	type BoothSize,
 	type BusinessRegistration,
 	type CallOutcome,
 	type Category,
@@ -13,7 +13,9 @@ import {
 
 export { MAX_CALL_ATTEMPTS };
 
-// --- Status model (display status derived by the API) ------------------------
+// --- Deprecated display status ----------------------------------------------------
+// Vendors no longer have a pipeline status in the UI (the stage lives on the application). The API
+// still derives this field; it is kept for the validation rules and the legacy suspend/reinstate call.
 
 export type VendorStatus =
 	| 'lead'
@@ -24,50 +26,14 @@ export type VendorStatus =
 	| 'declined'
 	| 'suspended';
 
-export const vendorStatuses: readonly VendorStatus[] = [
-	'lead',
-	'applied',
-	'in_review',
-	'waitlisted',
-	'approved',
-	'declined',
-	'suspended'
-];
+/** Derived by the API (Vendor.label): vendors no longer have a pipeline status in the UI. */
+export type VendorLabel = 'prospect' | 'active' | 'inactive' | 'suspended';
 
-export const statusLabels: Record<VendorStatus, string> = {
-	lead: 'Lead',
-	applied: 'Applied',
-	in_review: 'In review',
-	waitlisted: 'Waitlisted',
-	approved: 'Approved',
-	declined: 'Declined',
+export const vendorLabels: Record<VendorLabel, string> = {
+	prospect: 'Prospect',
+	active: 'Active',
+	inactive: 'Inactive',
 	suspended: 'Suspended'
-};
-
-/** Mirrors DISPLAY_TRANSITIONS in the backend, which is the authority. */
-export const statusTransitions: Record<VendorStatus, readonly VendorStatus[]> = {
-	lead: ['applied', 'in_review', 'declined'],
-	applied: ['in_review', 'declined'],
-	in_review: ['approved', 'waitlisted', 'declined'],
-	waitlisted: ['in_review', 'approved', 'declined'],
-	approved: ['suspended'],
-	suspended: ['approved'],
-	declined: ['in_review']
-};
-
-export function canTransition(from: VendorStatus, to: VendorStatus): boolean {
-	return statusTransitions[from].includes(to);
-}
-
-/** Team members may only turn a lead into an application; everything else is admin-only. */
-export function canChangeStatus(isAdmin: boolean, from: VendorStatus, to: VendorStatus): boolean {
-	return canTransition(from, to) && (isAdmin || (from === 'lead' && to === 'applied'));
-}
-
-/** Status a call outcome suggests; the profile offers it, it is never applied automatically. */
-export const outcomeSuggestions: Partial<Record<CallOutcome, VendorStatus>> = {
-	Interested: 'applied',
-	'Not Qualified': 'declined'
 };
 
 // --- Types ----------------------------------------------------------------------
@@ -100,6 +66,7 @@ export type Vendor = {
 	createdAt: string;
 	updatedAt: string;
 	status: VendorStatus;
+	label: VendorLabel;
 	journeyStage: string;
 	qualificationStatus: string;
 	applicationStatusSummary: string;
@@ -150,37 +117,11 @@ export type VendorInput = Pick<
 	| 'liabilityInsurance'
 >;
 
-export type BookingInterest = {
-	proposedBoothSize: BoothSize | '';
-	requestedWeekends: string[];
-	needsTent: boolean;
-};
-
 export type CallInput = {
 	outcome: CallOutcome | '';
 	callbackAt: string | null;
 	notes: string;
 	details: CallDetails;
-};
-
-export type CreatableStatus = Extract<VendorStatus, 'lead' | 'applied'>;
-
-export type ApplicationStatus = 'SUBMITTED' | 'IN_REVIEW' | 'WAITLISTED' | 'APPROVED' | 'DECLINED' | 'WITHDRAWN';
-
-export type Application = {
-	id: string;
-	vendorId: string;
-	status: ApplicationStatus;
-	source: string;
-	submittedAt: string;
-	submittedBy: UserSummary | null;
-	reviewerId: string | null;
-	category: string;
-	productDescription: string;
-	booking: BookingInterest;
-	decision: string;
-	decisionReason: string;
-	decidedAt: string | null;
 };
 
 export type TaskType = 'DISCOVERY_CALL' | 'APPLICATION_REVIEW' | 'FOLLOW_UP';
@@ -214,6 +155,8 @@ export type Task = {
 
 export type ActivityEvent = {
 	id: string;
+	/** The application the event belongs to, when it belongs to one. */
+	applicationId: string | null;
 	eventType: string;
 	description: string;
 	actor: UserSummary | null;
@@ -251,7 +194,6 @@ export function emptyVendorInput(): VendorInput {
 	};
 }
 
-export const emptyBooking = (): BookingInterest => ({ proposedBoothSize: '', requestedWeekends: [], needsTent: false });
 
 export const emptyCallDetails = (): CallDetails => ({
 	interestLevel: null,
@@ -273,16 +215,15 @@ export function toVendorInput(vendor: Vendor): VendorInput {
 }
 
 export const needsCall = (vendor: Vendor) => vendor.call.openTaskId !== null;
-export const neverCalled = (vendor: Vendor) => vendor.call.neverCalled;
 
 export const normaliseEmail = (email: string) => email.trim().toLowerCase();
 export const normaliseInstagram = (handle: string) => handle.replace(/[@\s]/g, '').toLowerCase();
 
 // --- API <-> UI mapping -----------------------------------------------------------
 
-type Json = Record<string, any>;
+export type Json = Record<string, any>;
 
-const user = (raw: Json | null | undefined): UserSummary | null =>
+export const user = (raw: Json | null | undefined): UserSummary | null =>
 	raw ? { id: raw.id, username: raw.username, name: raw.name, role: raw.role } : null;
 
 export function fromApiCallDetails(raw: Json | null | undefined): CallDetails {
@@ -315,6 +256,7 @@ export function fromApiVendor(raw: Json): Vendor {
 		createdAt: raw.created_at,
 		updatedAt: raw.updated_at,
 		status: raw.status,
+		label: raw.label,
 		journeyStage: raw.journey_stage,
 		qualificationStatus: raw.qualification_status,
 		applicationStatusSummary: raw.application_status_summary ?? '',
@@ -381,7 +323,7 @@ export function toApiVendor(input: Partial<VendorInput>): Json {
 	return body;
 }
 
-const vendorSummary = (raw: Json): VendorSummary => ({
+export const vendorSummary = (raw: Json): VendorSummary => ({
 	id: raw.id,
 	brandName: raw.brand_name,
 	firstName: raw.first_name ?? '',
@@ -391,29 +333,6 @@ const vendorSummary = (raw: Json): VendorSummary => ({
 	instagram: raw.instagram ?? '',
 	status: raw.status
 });
-
-export function fromApiApplication(raw: Json): Application {
-	const booth = raw.booth_requirements ?? {};
-	return {
-		id: raw.id,
-		vendorId: raw.vendor,
-		status: raw.status,
-		source: raw.source ?? '',
-		submittedAt: raw.submitted_at,
-		submittedBy: user(raw.submitted_by),
-		reviewerId: raw.reviewer ?? null,
-		category: raw.category ?? '',
-		productDescription: raw.product_description ?? '',
-		booking: {
-			proposedBoothSize: booth.size ?? '',
-			needsTent: Boolean(booth.needs_tent),
-			requestedWeekends: raw.preferred_market_dates ?? []
-		},
-		decision: raw.decision ?? '',
-		decisionReason: raw.decision_reason ?? '',
-		decidedAt: raw.decided_at ?? null
-	};
-}
 
 export function fromApiTask(raw: Json): Task {
 	return {
@@ -440,8 +359,9 @@ export function fromApiTask(raw: Json): Task {
 	};
 }
 
-const fromApiActivity = (raw: Json): ActivityEvent => ({
+export const fromApiActivity = (raw: Json): ActivityEvent => ({
 	id: raw.id,
+	applicationId: raw.application ?? null,
 	eventType: raw.event_type,
 	description: raw.description,
 	actor: user(raw.actor),
@@ -457,7 +377,7 @@ const fromApiNote = (raw: Json): InternalNote => ({
 	createdAt: raw.created_at
 });
 
-const mapPage = <T>(page: Page<Json>, map: (raw: Json) => T): Page<T> => ({ ...page, results: page.results.map(map) });
+export const mapPage = <T>(page: Page<Json>, map: (raw: Json) => T): Page<T> => ({ ...page, results: page.results.map(map) });
 
 function fromApiDuplicates(raw: Json): DuplicateResult {
 	return {
@@ -480,7 +400,7 @@ export class DuplicateVendorError extends Error {
 	}
 }
 
-function rethrowDuplicate(error: unknown): never {
+export function rethrowDuplicate(error: unknown): never {
 	if (error instanceof ApiError && error.status === 409 && error.body) {
 		throw new DuplicateVendorError(fromApiDuplicates(error.body), error.body.code as 'possible_duplicate');
 	}
@@ -499,45 +419,6 @@ export async function countVendors(query: Query = {}): Promise<number> {
 
 export async function getVendor(id: string): Promise<Vendor> {
 	return fromApiVendor(await request<Json>(`/vendors/${id}/`));
-}
-
-export async function createLead(
-	input: VendorInput,
-	options: { ownerId?: string | null; confirmDuplicate?: boolean } = {}
-): Promise<Vendor> {
-	try {
-		const raw = await request<Json>('/vendors/', {
-			method: 'POST',
-			json: { ...toApiVendor(input), owner: options.ownerId ?? null, confirm_duplicate: options.confirmDuplicate ?? false }
-		});
-		return fromApiVendor(raw);
-	} catch (error) {
-		rethrowDuplicate(error);
-	}
-}
-
-export async function submitApplication(args: {
-	vendorId?: string;
-	vendor?: VendorInput;
-	booking?: BookingInterest;
-	source?: string;
-}): Promise<Application> {
-	const booking = args.booking ?? emptyBooking();
-	try {
-		const raw = await request<Json>('/applications/', {
-			method: 'POST',
-			json: {
-				vendor: args.vendorId,
-				vendor_data: args.vendor ? toApiVendor(args.vendor) : undefined,
-				source: args.source ?? 'Staff entry',
-				booth_requirements: { size: booking.proposedBoothSize, needs_tent: booking.needsTent },
-				preferred_market_dates: booking.requestedWeekends
-			}
-		});
-		return fromApiApplication(raw);
-	} catch (error) {
-		rethrowDuplicate(error);
-	}
 }
 
 export async function updateVendor(id: string, patch: Partial<VendorInput> & { ownerId?: string | null }): Promise<Vendor> {
@@ -580,11 +461,6 @@ export async function findDuplicates(query: {
 		}
 	});
 	return fromApiDuplicates(raw);
-}
-
-export async function listApplications(vendorId: string): Promise<Application[]> {
-	const page = await request<Page<Json>>('/applications/', { query: { vendor: vendorId, page_size: 100 } });
-	return page.results.map(fromApiApplication);
 }
 
 export async function listActivity(vendorId: string, page = 1): Promise<Page<ActivityEvent>> {
@@ -653,14 +529,34 @@ export type ImportRow = {
 	matches: { vendor: { id: string; brand_name: string; status: VendorStatus }; matched_on: string[] }[];
 };
 export type ImportPreview = { rows: ImportRow[]; counts: Record<ImportClassification, number>; ignoredHeaders: string[] };
+/** Every imported row becomes an application at New; matched rows attach to the existing vendor
+ * (a new application, or bundled into its open one). */
 export type ImportResult = {
+	/** New vendors created. */
 	created: number;
+	/** Rows matched to an existing vendor. */
 	matched: number;
 	skipped: number;
 	invalid: number;
 	callTasksCreated: number;
+	applicationsCreated: number;
+	/** Matched rows added to the vendor's open application instead of starting one. */
+	applicationsBundled: number;
+	vendorIds: string[];
 	batchId: string;
 };
+
+export const fromApiImportResult = (raw: Json): ImportResult => ({
+	created: raw.created,
+	matched: raw.matched,
+	skipped: raw.skipped,
+	invalid: raw.invalid,
+	callTasksCreated: raw.call_tasks_created,
+	applicationsCreated: raw.applications_created ?? 0,
+	applicationsBundled: raw.applications_bundled ?? 0,
+	vendorIds: raw.vendor_ids ?? [],
+	batchId: raw.batch_id
+});
 
 function csvForm(file: File, includeLines: number[] = []) {
 	const form = new FormData();
@@ -680,12 +576,5 @@ export async function previewImport(file: File): Promise<ImportPreview> {
 
 export async function confirmImport(file: File, includeLines: number[]): Promise<ImportResult> {
 	const raw = await request<Json>('/imports/vendors/confirm/', { method: 'POST', form: csvForm(file, includeLines) });
-	return {
-		created: raw.created,
-		matched: raw.matched,
-		skipped: raw.skipped,
-		invalid: raw.invalid,
-		callTasksCreated: raw.call_tasks_created,
-		batchId: raw.batch_id
-	};
+	return fromApiImportResult(raw);
 }

@@ -1,21 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, request, setUnauthorizedHandler, withQuery } from '#lib/api.ts';
+import { createApplication } from '#lib/applications.ts';
 import {
-	canChangeStatus,
-	createLead,
 	DuplicateVendorError,
 	emptyCallInput,
 	emptyVendorInput,
+	fromApiImportResult,
 	fromApiVendor,
 	logCall,
 	setStatus,
-	statusTransitions,
 	toApiVendor,
-	vendorStatuses,
 	type VendorInput,
 	type VendorStatus
 } from '#lib/vendor-store.ts';
 import { callErrors, isIncomplete, validateVendor } from '#lib/vendor-validation.ts';
+import importConfirmFixture from '#lib/fixtures/import-confirm.json';
+import wonFixture from '#lib/fixtures/application-won.json';
 
 type Call = { url: string; init: RequestInit };
 let calls: Call[] = [];
@@ -82,25 +82,15 @@ const apiVendor = {
 	}
 };
 
-describe('status rules', () => {
-	it('matches the backend transition map', () => {
-		expect(statusTransitions).toEqual({
-			lead: ['applied', 'in_review', 'declined'],
-			applied: ['in_review', 'declined'],
-			in_review: ['approved', 'waitlisted', 'declined'],
-			waitlisted: ['in_review', 'approved', 'declined'],
-			approved: ['suspended'],
-			suspended: ['approved'],
-			declined: ['in_review']
-		});
-	});
-
-	it('lets team members only turn leads into applications', () => {
-		expect(canChangeStatus(false, 'lead', 'applied')).toBe(true);
-		expect(canChangeStatus(false, 'lead', 'declined')).toBe(false);
-		expect(canChangeStatus(false, 'in_review', 'approved')).toBe(false);
-		expect(canChangeStatus(true, 'in_review', 'approved')).toBe(true);
-		for (const status of vendorStatuses) expect(canChangeStatus(true, status, status)).toBe(false);
+// Changed in v1.3: the vendor-level status machine (statusTransitions, canChangeStatus) is gone; the
+// pipeline stage lives on the application. Vendor status is only used for suspend and reinstate.
+describe('vendor account status', () => {
+	it('suspends and reinstates through the legacy status endpoint', async () => {
+		mockFetch({ status: 200, body: { ...apiVendor, status: 'suspended', label: 'suspended' } });
+		const result = await setStatus('v1', 'suspended', '  Late payments ');
+		expect(calls[0].url).toBe('/api/v1/vendors/v1/status/');
+		expect(JSON.parse(calls[0].init.body as string)).toEqual({ status: 'suspended', note: 'Late payments' });
+		expect(result).toMatchObject({ ok: true, vendor: { label: 'suspended' } });
 	});
 });
 
@@ -173,29 +163,47 @@ describe('API mapping', () => {
 	});
 });
 
+describe('CSV import result', () => {
+	it('maps the confirm response (captured payload)', () => {
+		expect(fromApiImportResult(importConfirmFixture)).toEqual({
+			created: 1,
+			matched: 1,
+			skipped: 0,
+			invalid: 0,
+			callTasksCreated: 1,
+			applicationsCreated: 2,
+			applicationsBundled: 0,
+			vendorIds: importConfirmFixture.vendor_ids,
+			batchId: importConfirmFixture.batch_id
+		});
+	});
+});
+
 describe('API client', () => {
+	// Changed in v1.3: createLead (POST /vendors/) is gone from the UI; every entry is an application.
 	it('sends the CSRF token and JSON body on writes', async () => {
-		mockFetch({ status: 201, body: apiVendor });
-		await createLead({ ...emptyVendorInput(), brandName: 'Moss', instagram: '@moss' });
+		mockFetch({ status: 201, body: wonFixture });
+		await createApplication({ vendor: { ...emptyVendorInput(), brandName: ' Moss ', instagram: '@moss' } });
 		const [call] = calls;
-		expect(call.url).toBe('/api/v1/vendors/');
+		expect(call.url).toBe('/api/v1/applications/');
 		expect(call.init.method).toBe('POST');
 		expect((call.init.headers as Record<string, string>)['X-CSRFToken']).toBe('test-token');
 		expect(call.init.credentials).toBe('include');
-		expect(JSON.parse(call.init.body as string)).toMatchObject({ brand_name: 'Moss', confirm_duplicate: false });
+		expect(JSON.parse(call.init.body as string)).toMatchObject({ vendor_data: { brand_name: 'Moss', instagram: '@moss' } });
 	});
 
 	it('turns a 409 into a DuplicateVendorError with matches', async () => {
 		mockFetch({
 			status: 409,
 			body: {
-				code: 'possible_duplicate',
+				code: 'ambiguous_vendor',
 				matches: [{ vendor: { id: 'v9', brand_name: 'Acme', status: 'lead' }, matched_on: ['email'] }],
 				name_matches: []
 			}
 		});
-		const error = await createLead({ ...emptyVendorInput(), brandName: 'X', email: 'a@b.co' }).catch((e) => e);
+		const error = await createApplication({ vendor: { ...emptyVendorInput(), brandName: 'X', email: 'a@b.co' } }).catch((e) => e);
 		expect(error).toBeInstanceOf(DuplicateVendorError);
+		expect(error.code).toBe('ambiguous_vendor');
 		expect(error.result.matches[0]).toMatchObject({ vendor: { id: 'v9', brandName: 'Acme' }, matchedOn: ['email'] });
 	});
 

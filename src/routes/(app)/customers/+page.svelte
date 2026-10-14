@@ -1,3 +1,4 @@
+<!-- TODO(finance): mock page, unlinked from the menu in v1.3; replaced when invoices, payments and payers arrive. -->
 <div class="bg-base-100 w-full shadow-sm border border-base-200 rounded-lg">
     <div class="overflow-x-auto w-full">
         <table class="table table-zebra table-sm md:table-md">

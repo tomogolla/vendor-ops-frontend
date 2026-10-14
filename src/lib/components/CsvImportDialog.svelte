@@ -28,8 +28,8 @@
 	});
 
 	const sections: { kind: ImportClassification; title: string; tone: string }[] = [
-		{ kind: 'new', title: 'New vendors to import', tone: '' },
-		{ kind: 'matched', title: 'Matched existing vendors (intake recorded, no new profile)', tone: '' },
+		{ kind: 'new', title: 'New vendors (each gets an application at New)', tone: '' },
+		{ kind: 'matched', title: 'Matched existing vendors (the application attaches to that vendor)', tone: '' },
 		{ kind: 'possible_duplicate', title: 'Possible duplicates (skipped unless ticked)', tone: 'text-warning' },
 		{ kind: 'skipped', title: 'Skipped', tone: 'text-base-content/60' },
 		{ kind: 'invalid', title: 'Invalid rows', tone: 'text-error' }
@@ -80,7 +80,7 @@
 		try {
 			result = await confirmImport(file, include);
 			onimported?.();
-			await goto('/applications?status=lead');
+			await goto('/applications?source=CSV+import');
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'The import failed. Nothing was saved.';
 		} finally {
@@ -100,18 +100,24 @@
 
 <dialog bind:this={dialog} class="modal" aria-labelledby="csv-import-title" onclose={reset}>
 	<div class="modal-box max-w-3xl">
-		<h2 id="csv-import-title" class="text-base font-bold">Import leads from CSV</h2>
+		<h2 id="csv-import-title" class="text-base font-bold">Import applications from CSV</h2>
 		<p class="mt-1 text-xs text-base-content/60">
-			Each row needs a brand name and an email, phone or Instagram. New vendors start as leads with a discovery call
-			task unless marked already contacted, inactive or excluded from outreach. Tags are separated with <code>;</code>.
+			Every row becomes an application at New. Each row needs a brand name and an email, phone or Instagram. Rows that
+			match an existing vendor attach to that vendor (added to its open application if it has one). A discovery call
+			task is created unless the row is marked already contacted, inactive or excluded from outreach. Tags are separated
+			with <code>;</code>.
 			<a class="link" href={sampleUrl} download="vendor-import-sample.csv">Download a sample CSV</a>
 		</p>
 
 		{#if result}
 			<div role="status" class="alert alert-success mt-4 text-sm">
 				<div>
-					<p>Imported {result.created} new lead{result.created === 1 ? '' : 's'} and recorded {result.matched} match{result.matched === 1 ? '' : 'es'}.</p>
+					<p>
+						{result.applicationsCreated} application{result.applicationsCreated === 1 ? '' : 's'} created at New
+						{#if result.applicationsBundled}and {result.applicationsBundled} added to open applications{/if}.
+					</p>
 					<p class="text-xs">
+						{result.created} new vendor{result.created === 1 ? '' : 's'} · {result.matched} matched to existing vendors ·
 						{result.callTasksCreated} call task{result.callTasksCreated === 1 ? '' : 's'} created ·
 						{result.skipped} skipped · {result.invalid} invalid
 					</p>

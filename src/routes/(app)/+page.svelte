@@ -1,435 +1,189 @@
 <script lang="ts">
-    import { countTasks } from '#lib/vendor-store.ts';
+	import { BOARD_STAGES, countApplications, getSummary, stageLabels, type ApplicationSummary } from '#lib/applications.ts';
+	import { capacityAlerts, listWeekends, type CapacityAlert } from '#lib/catalog.ts';
+	import { formatDateTime } from '#lib/format.ts';
+	import { countTasks, listTasks, type Task } from '#lib/vendor-store.ts';
 
-    type CallCounts = { open: number; overdue: number; mine: number };
-    let calls = $state<CallCounts | null>(null);
-    let callsError = $state('');
+	type CallCounts = { open: number; overdue: number; mine: number; next: Task[] };
+	let calls = $state<CallCounts | null>(null);
+	let callsError = $state('');
+	let summary = $state<ApplicationSummary | null>(null);
+	let summaryError = $state('');
+	let imported = $state<number | null>(null);
+	let alerts = $state<CapacityAlert[] | null>(null);
+	let alertsError = $state('');
 
-    function loadCalls() {
-        callsError = '';
-        const base = { task_type: 'DISCOVERY_CALL', is_open: true };
-        Promise.all([
-            countTasks(base),
-            countTasks({ ...base, due_before: new Date().toISOString() }),
-            countTasks({ ...base, owner: 'me' })
-        ])
-            .then(([open, overdue, mine]) => (calls = { open, overdue, mine }))
-            .catch((error) => (callsError = error instanceof Error ? error.message : 'Could not load calls.'));
-    }
-    $effect(loadCalls);
+	const message = (error: unknown, fallback: string) => (error instanceof Error ? error.message : fallback);
+
+	function loadCalls() {
+		callsError = '';
+		const base = { task_type: 'DISCOVERY_CALL', is_open: true };
+		Promise.all([
+			countTasks(base),
+			countTasks({ ...base, due_before: new Date().toISOString() }),
+			countTasks({ ...base, owner: 'me' }),
+			listTasks({ ...base, ordering: 'due_at', page_size: 5 })
+		])
+			.then(([open, overdue, mine, next]) => (calls = { open, overdue, mine, next: next.results }))
+			.catch((error) => (callsError = message(error, 'Could not load calls.')));
+	}
+
+	function loadPipeline() {
+		summaryError = '';
+		getSummary()
+			.then((result) => (summary = result))
+			.catch((error) => (summaryError = message(error, 'Could not load the pipeline.')));
+		countApplications({ stage: 'NEW', source: 'CSV import' })
+			.then((count) => (imported = count))
+			.catch(() => (imported = null));
+	}
+
+	function loadCapacity() {
+		alertsError = '';
+		listWeekends({ page_size: 100 })
+			.then((page) => (alerts = capacityAlerts(page.results.filter((weekend) => weekend.status !== 'CLOSED'))))
+			.catch((error) => (alertsError = message(error, 'Could not load capacity.')));
+	}
+
+	$effect(loadCalls);
+	$effect(loadPipeline);
+	$effect(loadCapacity);
+
+	const overdue = (task: Task) => task.dueAt !== null && new Date(task.dueAt).getTime() < Date.now();
+	const taskHref = (task: Task) => (task.applicationId ? `/applications/${task.applicationId}` : `/vendors/${task.vendor.id}`);
 </script>
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
-    <!-- Left Column (50% width on desktop) -->
-    <div class="card bg-base-100 border border-base-200 shadow-sm p-2">
-        <header class="card-header p-2">
-            <div class="flex items-center justify-between">
-                <h3 class="font-bold text-lg text-base-content/80">Tasks</h3>
-                <span
-                    class="bg-red-100 text-red-600 font-semibold text-xs px-2.5 py-0.5 rounded-full"
-                >
-                    14 pending
-                </span>
-            </div>
-        </header>
-        <!-- Task Alert List -->
-        <div class="space-y-3">
-            <!-- Call tasks: live open DISCOVERY_CALL tasks from the API -->
-            <div
-                class="bg-base-200/40 border border-base-200 rounded-lg p-3.5 flex items-center justify-between gap-4"
-            >
-                <div class="space-y-0.5">
-                    <h4 class="font-bold text-sm text-base-content">Vendor Calls Due</h4>
-                    <p class="text-xs text-base-content/60">
-                        {#if callsError}
-                            {callsError} <button type="button" class="link" onclick={loadCalls}>Retry</button>
-                        {:else if !calls}
-                            Loading…
-                        {:else if calls.open}
-                            {calls.open} open discovery call{calls.open === 1 ? '' : 's'} · {calls.overdue} overdue · {calls.mine} assigned to you
-                        {:else}
-                            No calls due
-                        {/if}
-                    </p>
-                </div>
-                {#if calls?.open}
-                    <a
-                        href="/tasks?view=calls"
-                        class="btn btn-xs sm:btn-sm border-none bg-amber-100 text-amber-800 hover:bg-amber-200 font-medium rounded-md px-3 whitespace-nowrap"
-                    >
-                        Action Required
-                    </a>
-                {/if}
-            </div>
+<svelte:head><title>Overview · Vendor Ops</title></svelte:head>
 
-            <!-- Task 1: Applications Awaiting Review -->
-            <div
-                class="bg-base-200/40 border border-base-200 rounded-lg p-3.5 flex items-center justify-between gap-4"
-            >
-                <div class="space-y-0.5">
-                    <h4 class="font-bold text-sm text-base-content">
-                        Applications Awaiting Review
-                    </h4>
-                    <p class="text-xs text-base-content/60">
-                        8 submissions in 'Under Review' status
-                    </p>
-                </div>
-                <button
-                    class="btn btn-xs sm:btn-sm border-none bg-amber-100 text-amber-800 hover:bg-amber-200 font-medium rounded-md px-3 whitespace-nowrap"
-                >
-                    Action Required
-                </button>
-            </div>
+{#snippet retry(error: string, again: () => void)}
+	<p role="alert" class="text-xs text-error">{error} <button type="button" class="link" onclick={again}>Retry</button></p>
+{/snippet}
 
-            <!-- Task 2: Missing Documents -->
-            <div
-                class="bg-base-200/40 border border-base-200 rounded-lg p-3.5 flex items-center justify-between gap-4"
-            >
-                <div class="space-y-0.5">
-                    <h4 class="font-bold text-sm text-base-content">
-                        Missing Documents
-                    </h4>
-                    <p class="text-xs text-base-content/60">
-                        Greenpoint Flea: 4 vendors missing active insurance
-                    </p>
-                </div>
-                <button
-                    class="btn btn-xs sm:btn-sm border-none bg-rose-100 text-rose-700 hover:bg-rose-200 font-medium rounded-md px-3 whitespace-nowrap"
-                >
-                    Action Required
-                </button>
-            </div>
+<div class="grid grid-cols-1 gap-2 md:grid-cols-3">
+	<div class="flex flex-col gap-2">
+		<section class="card card-xs bg-base-100 border border-base-200 shadow-sm" aria-labelledby="calls-heading">
+			<div class="card-body">
+				<h2 id="calls-heading" class="card-title">Vendor calls due</h2>
+				{#if callsError}
+					{@render retry(callsError, loadCalls)}
+				{:else if !calls}
+					<p class="text-xs text-base-content/60">Loading…</p>
+				{:else}
+					<p class="text-xs text-base-content/70">
+						{calls.open} open · <span class={[calls.overdue && 'font-semibold text-error']}>{calls.overdue} overdue</span> · {calls.mine} assigned to you
+					</p>
+					<ul class="flex flex-col gap-1">
+						{#each calls.next as task (task.id)}
+							<li class="flex items-center justify-between gap-2 text-xs">
+								<a href={taskHref(task)} class="truncate hover:underline">{task.vendor.brandName}</a>
+								<span class={['whitespace-nowrap', overdue(task) ? 'font-semibold text-error' : 'text-base-content/60']}>
+									{task.dueAt ? formatDateTime(task.dueAt) : 'No due date'}
+								</span>
+							</li>
+						{:else}
+							<li class="text-xs text-base-content/60">No calls due.</li>
+						{/each}
+					</ul>
+					<div class="card-actions justify-end"><a href="/tasks?view=calls" class="btn btn-xs">All calls</a></div>
+				{/if}
+			</div>
+		</section>
 
-            <!-- Task 3: Unsigned Contracts -->
-            <div
-                class="bg-base-200/40 border border-base-200 rounded-lg p-3.5 flex items-center justify-between gap-4"
-            >
-                <div class="space-y-0.5">
-                    <h4 class="font-bold text-sm text-base-content">
-                        Unsigned Contracts
-                    </h4>
-                    <p class="text-xs text-base-content/60">
-                        2 core furniture vendors have pending agreements
-                    </p>
-                </div>
-                <button
-                    class="btn btn-xs sm:btn-sm border-none bg-rose-100 text-rose-700 hover:bg-rose-200 font-medium rounded-md px-3 whitespace-nowrap"
-                >
-                    Action Required
-                </button>
-            </div>
+		<section class="card card-xs bg-base-100 border border-base-200 shadow-sm" aria-labelledby="imported-heading">
+			<div class="card-body">
+				<h2 id="imported-heading" class="card-title">Imported, still New</h2>
+				<p class="text-xs text-base-content/70">
+					{#if imported === null}Loading…{:else}{imported} application{imported === 1 ? '' : 's'} from CSV imports not called yet.{/if}
+				</p>
+				<div class="card-actions justify-end">
+					<a href="/applications?source=CSV+import" class="btn btn-xs">Open on the board</a>
+				</div>
+			</div>
+		</section>
 
-            <!-- Task 4: Unpaid Bookings -->
-            <div
-                class="bg-base-200/40 border border-base-200 rounded-lg p-3.5 flex items-center justify-between gap-4"
-            >
-                <div class="space-y-0.5">
-                    <h4 class="font-bold text-sm text-base-content">
-                        Unpaid Bookings
-                    </h4>
-                    <p class="text-xs text-base-content/60">
-                        Williamsburg Oct 14: $1,250 past due across 5 spots
-                    </p>
-                </div>
-                <button
-                    class="btn btn-xs sm:btn-sm border-none bg-rose-100 text-rose-700 hover:bg-rose-200 font-medium rounded-md px-3 whitespace-nowrap"
-                >
-                    Action Required
-                </button>
-            </div>
+		<section class="card card-xs bg-base-100 border border-base-200 shadow-sm" aria-labelledby="payments-heading">
+			<div class="card-body">
+				<!-- TODO(finance): match Stripe/Shopify payments to invoices once invoicing exists. -->
+				<h2 id="payments-heading" class="card-title">Unmatched payments</h2>
+				<p class="text-xs text-base-content/60">Arrives with invoices and payments in the next release.</p>
+			</div>
+		</section>
+	</div>
 
-            <!-- Task 5: Failed Messages -->
-            <div
-                class="bg-base-200/40 border border-base-200 rounded-lg p-3.5 flex items-center justify-between gap-4"
-            >
-                <div class="space-y-0.5">
-                    <h4 class="font-bold text-sm text-base-content">
-                        Failed Messages
-                    </h4>
-                    <p class="text-xs text-base-content/60">
-                        1 SMS broadcast bounce error recorded today
-                    </p>
-                </div>
-                <button
-                    class="btn btn-xs sm:btn-sm border-none bg-amber-100 text-amber-800 hover:bg-amber-200 font-medium rounded-md px-3 whitespace-nowrap"
-                >
-                    Action Required
-                </button>
-            </div>
+	<div class="flex flex-col gap-2">
+		<section class="card card-xs bg-base-100 border border-base-200 shadow-sm" aria-labelledby="pipeline-heading">
+			<div class="card-body">
+				<h2 id="pipeline-heading" class="card-title">Pipeline</h2>
+				{#if summaryError}
+					{@render retry(summaryError, loadPipeline)}
+				{:else if !summary}
+					<p class="text-xs text-base-content/60">Loading…</p>
+				{:else}
+					<dl class="grid grid-cols-2 gap-2">
+						{#each BOARD_STAGES as stage (stage)}
+							<div class="rounded-lg bg-base-200/60 p-2">
+								<dt class="text-[11px] text-base-content/60">{stageLabels[stage]}</dt>
+								<dd class="text-lg font-semibold">{summary.stages[stage]}</dd>
+							</div>
+						{/each}
+					</dl>
+					<p class="text-[11px] text-base-content/60">Closed: {summary.stages.DECLINED} declined, {summary.stages.WITHDRAWN} withdrawn.</p>
+					<div class="card-actions justify-end"><a href="/applications" class="btn btn-xs">Board</a></div>
+				{/if}
+			</div>
+		</section>
 
-            <!-- Task 6: New Shopify Orders -->
-            <div
-                class="bg-base-200/40 border border-base-200 rounded-lg p-3.5 flex items-center justify-between gap-4"
-            >
-                <div class="space-y-0.5">
-                    <h4 class="font-bold text-sm text-base-content">
-                        New Shopify Orders
-                    </h4>
-                    <p class="text-xs text-base-content/60">
-                        6 Shopify orders Not matched to vendor profiles
-                    </p>
-                </div>
-                <button
-                    class="btn btn-xs sm:btn-sm border-none bg-amber-100 text-amber-800 hover:bg-amber-200 font-medium rounded-md px-3 whitespace-nowrap"
-                >
-                    Action Required
-                </button>
-            </div>
-            <div
-                class="bg-base-200/40 border border-base-200 rounded-lg p-3.5 flex items-center justify-between gap-4"
-            >
-                <div class="space-y-0.5">
-                    <h4 class="font-bold text-sm text-base-content">
-                        New Stripe Orders
-                    </h4>
-                    <p class="text-xs text-base-content/60">
-                        6 Stripe orders Not matched to vendor profiles
-                    </p>
-                </div>
-                <button
-                    class="btn btn-xs sm:btn-sm border-none bg-amber-100 text-amber-800 hover:bg-amber-200 font-medium rounded-md px-3 whitespace-nowrap"
-                >
-                    Action Required
-                </button>
-            </div>
+		<section class="card card-xs bg-base-100 border border-base-200 shadow-sm" aria-labelledby="awaiting-heading">
+			<div class="card-body">
+				<h2 id="awaiting-heading" class="card-title">Oldest awaiting payment</h2>
+				{#if summary}
+					<ul class="flex flex-col gap-1">
+						{#each summary.oldestAwaitingPayment as item (item.id)}
+							<li class="flex items-center justify-between gap-2 text-xs">
+								<a href={`/applications/${item.id}`} class="truncate hover:underline">{item.brandName}</a>
+								<span class={['whitespace-nowrap', (item.daysSinceBilled ?? 0) >= 7 ? 'font-semibold text-error' : 'text-base-content/60']}>
+									{item.daysSinceBilled === null ? 'billing date unknown' : `${item.daysSinceBilled} day${item.daysSinceBilled === 1 ? '' : 's'} since billing`}
+								</span>
+							</li>
+						{:else}
+							<li class="text-xs text-base-content/60">Nothing is awaiting payment.</li>
+						{/each}
+					</ul>
+				{:else if !summaryError}
+					<p class="text-xs text-base-content/60">Loading…</p>
+				{/if}
+			</div>
+		</section>
+	</div>
 
-            <!-- Task 7: Markets Nearing Capacity -->
-            <div
-                class="bg-base-200/40 border border-base-200 rounded-lg p-3.5 flex items-center justify-between gap-4"
-            >
-                <div class="space-y-0.5">
-                    <h4 class="font-bold text-sm text-base-content">
-                        Markets Nearing Capacity
-                    </h4>
-                    <p class="text-xs text-base-content/60">
-                        Chelsea Antiques Oct 21: 94% booths booked
-                    </p>
-                </div>
-                <button
-                    class="btn btn-xs sm:btn-sm border-none bg-emerald-100 text-emerald-800 hover:bg-emerald-200 font-medium rounded-md px-3 whitespace-nowrap"
-                >
-                    Action Required
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Right Column (50% width on desktop) -->
-    <div class="card bg-base-100 border border-base-200 shadow-sm p-2 gap-3">
-        <div class="card bg-base-100 w-full shadow-sm border border-base-200 rounded-xl overflow-hidden">
-            <div class="card-body p-5 space-y-4">
-                <!-- Box Title -->
-                <h2 class="text-base-content/80">Upcoming Markets</h2>
-
-                <!-- Markets List -->
-                <div class="divide-y divide-base-200">
-                    <!-- Market 1 -->
-                    <div class="py-0 first:pt-0 last:pb-0 space-y-1.5">
-                        <div class="flex items-center justify-between">
-                            <h4 class="font-semibold text-sm text-base-content">
-                                October Flea <span
-                                    class="font-medium text-base-content/70"
-                                    >(Oct 03-04)</span
-                                >
-                            </h4>
-                        </div>
-                        <div
-                            class="flex flex-wrap items-center justify-between text-xs text-base-content/60 gap-2"
-                        >
-                            <span
-                                >Occupancy: <span
-                                    class="font-medium text-base-content/80"
-                                    >32/40 Booths (80%)</span
-                                ></span
-                            >
-                            <span
-                                >Rev: <span
-                                    class="font-medium text-base-content/80"
-                                    >$8,400 / $9,000</span
-                                ></span
-                            >
-                            <span class="font-light text-emerald-600"
-                                >89% Ready</span
-                            >
-                        </div>
-
-                        <hr class="border-base-300 my-0" />
-                    </div>
-
-                    <!-- Market 2 -->
-                    <div class="py-0 first:pt-0 last:pb-0 space-y-1.5">
-                        <div class="flex items-center justify-between">
-                            <h4 class="font-semibold text-sm text-base-content">
-                                October Flea <span
-                                    class="font-medium text-base-content/70"
-                                    >(Oct 10-11)</span
-                                >
-                            </h4>
-                        </div>
-                        <div
-                            class="flex flex-wrap items-center justify-between text-xs text-base-content/60 gap-2"
-                        >
-                            <span
-                                >Occupancy: <span
-                                    class="font-medium text-base-content/80"
-                                    >28/40 Booths (70%)</span
-                                ></span
-                            >
-                            <span
-                                >Rev: <span
-                                    class="font-medium text-base-content/80"
-                                    >$5,600 / $9,000</span
-                                ></span
-                            >
-                            <span class="font-light text-emerald-600"
-                                >67% Ready</span
-                            >
-                        </div>
-                        <hr class="border-base-300 my-0" />
-                    </div>
-
-                    <!-- Market 3 -->
-                    <div class="py-1 first:pt-0 last:pb-0 space-y-1.5">
-                        <div class="flex items-center justify-between">
-                            <h4 class="font-semibold text-sm text-base-content">
-                                October Flea <span
-                                    class="font-medium text-base-content/70"
-                                    >(Oct 17-18)</span
-                                >
-                            </h4>
-                        </div>
-                        <div
-                            class="flex flex-wrap items-center justify-between text-xs text-base-content/60 gap-2"
-                        >
-                            <span
-                                >Occupancy: <span
-                                    class="font-medium text-base-content/80"
-                                    >31/40 Booths (78%)</span
-                                ></span
-                            >
-                            <span
-                                >Rev: <span
-                                    class="font-medium text-base-content/80"
-                                    >$6,000 / $9,000</span
-                                ></span
-                            >
-                            <span class="font-light text-emerald-600"
-                                >31% Ready</span
-                            >
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden">
-                <div
-                    class="card bg-base-100 w-full shadow-sm border border-base-200 rounded-xl overflow-hidden"
-                >
-                    <div class="card-body p-5 space-y-4">
-                        <!-- Box Title -->
-                        <h3
-                            class="text-xs font-semibold uppercase tracking-wider text-base-content/80"
-                        >
-                            Your Active Tasks
-                        </h3>
-
-                        <!-- Task List -->
-                        <div class="divide-y divide-base-200">
-                            <!-- Task 1 -->
-                            <div
-                                class="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-4"
-                            >
-                                <div class="space-y-0.5">
-                                    <h4
-                                        class="font-semibold text-sm text-base-content"
-                                    >
-                                        View Call list
-                                    </h4>
-                                   
-                                </div>
-                                <button
-                                    class="btn btn-sm btn-ghost border-base-300 font-medium text-xs px-4 min-h-8 h-8"
-                                >
-                                    View Call List
-                                </button>
-                            </div>
-
-                            <!-- Task 2 -->
-                            <div
-                                class="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-4"
-                            >
-                                <div class="space-y-0.5">
-                                    <h4
-                                        class="font-semibold text-sm text-base-content"
-                                    >
-                                        Email: Vintage Vault
-                                    </h4>
-                                    <p class="text-xs text-base-content/60">
-                                        Request updated Certificate of Insurance
-                                    </p>
-                                </div>
-                                <button
-                                    class="btn btn-sm btn-ghost border-base-300 font-medium text-xs px-4 min-h-8 h-8"
-                                >
-                                    Email
-                                </button>
-                            </div>
-
-                            <!-- Task 3 -->
-                            <div
-                                class="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-4"
-                            >
-                                <div class="space-y-0.5">
-                                    <h4
-                                        class="font-semibold text-sm text-base-content"
-                                    >
-                                        Review: Curated NYC LLC
-                                    </h4>
-                                    <p class="text-xs text-base-content/60">
-                                        Evaluate furniture application submitted
-                                        yesterday
-                                    </p>
-                                </div>
-                                <button
-                                    class="btn btn-sm btn-ghost border-base-300 font-medium text-xs px-4 min-h-8 h-8"
-                                >
-                                    Review
-                                </button>
-                            </div>
-
-                            <!-- Task 4 -->
-                            <div
-                                class="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-4"
-                            >
-                                <div class="space-y-0.5">
-                                    <h4
-                                        class="font-semibold text-sm text-base-content"
-                                    >
-                                        Follow-up: Retro Glass
-                                    </h4>
-                                    <p class="text-xs text-base-content/60">
-                                        Clarify sizing for 10x10 indoor booth
-                                        space
-                                    </p>
-                                </div>
-                                <button
-                                    class="btn btn-sm btn-ghost border-base-300 font-medium text-xs px-4 min-h-8 h-8"
-                                >
-                                    Follow-up
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-    </div>
+	<div class="flex flex-col gap-2">
+		<section class="card card-xs bg-base-100 border border-base-200 shadow-sm" aria-labelledby="capacity-heading">
+			<div class="card-body">
+				<h2 id="capacity-heading" class="card-title">Capacity alerts</h2>
+				<p class="text-[11px] text-base-content/60">Booths and add-ons with 2 or fewer spots left, or with a waitlist.</p>
+				{#if alertsError}
+					{@render retry(alertsError, loadCapacity)}
+				{:else if !alerts}
+					<p class="text-xs text-base-content/60">Loading…</p>
+				{:else}
+					<ul class="flex flex-col gap-1">
+						{#each alerts as alert (`${alert.weekend.id}-${alert.kind}-${alert.productName}`)}
+							<li class="flex flex-wrap items-center justify-between gap-2 text-xs">
+								<a href={`/market-weekends/${alert.weekend.id}`} class="hover:underline">{alert.weekend.label}: {alert.productName}</a>
+								<span class="flex gap-1">
+									{#if alert.remaining !== null}
+										<span class={['badge badge-xs', alert.remaining <= 0 ? 'badge-error' : 'badge-warning']}>{Math.max(alert.remaining, 0)} left</span>
+									{/if}
+									{#if alert.waitlisted}<span class="badge badge-xs badge-secondary badge-outline">{alert.waitlisted} waitlisted</span>{/if}
+								</span>
+							</li>
+						{:else}
+							<li class="text-xs text-base-content/60">No capacity alerts.</li>
+						{/each}
+					</ul>
+					<div class="card-actions justify-end"><a href="/market-weekends" class="btn btn-xs">Market weekends</a></div>
+				{/if}
+			</div>
+		</section>
+	</div>
 </div>
-
-
-
-<style>
-    h3 {
-        font-size: 1rem;
-        text-transform: uppercase;
-    }
-</style>

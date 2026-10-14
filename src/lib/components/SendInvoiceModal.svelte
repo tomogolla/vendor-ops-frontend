@@ -1,3 +1,5 @@
+<!-- TODO(invoicing): not mounted anywhere since v1.3 (billing is the interim Mark billed action on the
+     application page). Kept as a reference for the invoicing release; delete or rebuild it then. -->
 <script lang="ts">
     type Props = {
         brandName?: string;

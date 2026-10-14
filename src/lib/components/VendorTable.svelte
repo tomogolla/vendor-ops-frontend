@@ -1,5 +1,5 @@
 <script lang="ts">
-	import StatusBadge from '#lib/components/StatusBadge.svelte';
+	import LabelBadge from '#lib/components/LabelBadge.svelte';
 	import { formatDate, instagramUrl } from '#lib/format.ts';
 	import type { Vendor } from '#lib/vendor-store.ts';
 	import { isIncomplete } from '#lib/vendor-validation.ts';
@@ -15,7 +15,7 @@
 				<th>Date</th>
 				<th>Brand</th>
 				<th>Contact</th>
-				<th>Status</th>
+				<th>Label</th>
 				<th>Category</th>
 				<th>Phone</th>
 				<th>Instagram</th>
@@ -38,7 +38,7 @@
 					</td>
 					<td>
 						<div class="flex flex-wrap gap-1">
-							<StatusBadge status={vendor.status} />
+							<LabelBadge label={vendor.label} />
 							{#if isIncomplete(vendor)}<span class="badge badge-sm badge-warning">Incomplete</span>{/if}
 						</div>
 					</td>

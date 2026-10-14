@@ -1,0 +1,13 @@
+{
+	"created": 1,
+	"matched": 1,
+	"skipped": 0,
+	"invalid": 0,
+	"call_tasks_created": 1,
+	"applications_created": 2,
+	"applications_bundled": 0,
+	"vendor_ids": [
+		"4f8b45c4-ddcc-4d1c-b1c3-b65398789cc8"
+	],
+	"batch_id": "851554ac-9c30-4853-a241-bb1e193d17e3"
+}

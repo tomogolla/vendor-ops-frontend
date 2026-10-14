@@ -1,0 +1,15 @@
+{
+	"capacity_refused": {
+		"quantity": "Only 0 of 8ft x 8ft left for Oct 10 & 11; this line needs 1. Waitlist it instead.",
+		"remaining": "0"
+	},
+	"member_forbidden": {
+		"detail": "Only administrators can do this."
+	},
+	"capacity_floor_refused": {
+		"capacity": "2 already confirmed; release holds before lowering capacity below that."
+	},
+	"delete_refused": {
+		"detail": "This product has application lines and cannot be deleted."
+	}
+}
