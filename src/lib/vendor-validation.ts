@@ -36,10 +36,8 @@ export function requiredErrors(input: VendorInput, status: VendorStatus): FieldE
 		return errors;
 	}
 
-	// if (blank(input.firstName)) errors.firstName = 'First name is required.';
-	// if (blank(input.lastName)) errors.lastName = 'Last name is required.';
-	// if (blank(input.email)) errors.email = 'Email is required.';
-	// if (blank(input.phone)) errors.phone = 'Phone is required.';
+	// Contact names, email and phone remain optional throughout the vendor journey.
+	// When provided, email and phone are still format-checked by formatErrors().
 	if (!input.category) errors.category = 'Category is required.';
 	return errors;
 }

@@ -12,6 +12,7 @@ import {
 	statusTransitions,
 	toApiVendor,
 	vendorStatuses,
+	type VendorInput,
 	type VendorStatus
 } from '#lib/vendor-store.ts';
 import { callErrors, isIncomplete, validateVendor } from '#lib/vendor-validation.ts';
@@ -111,8 +112,21 @@ describe('validation by status', () => {
 		expect(validateVendor({ ...lead, instagram: '' }, 'lead')).toHaveProperty('contact');
 	});
 
-	it.each<VendorStatus>(['applied', 'in_review', 'approved'])('requires full details once %s', (status) => {
-		expect(Object.keys(validateVendor(lead, status)).sort()).toEqual(['category', 'email', 'firstName', 'lastName', 'phone']);
+	it.each<VendorStatus>(['applied', 'in_review', 'approved'])('only adds category as a requirement once %s', (status) => {
+		expect(validateVendor(lead, status)).toEqual({ category: 'Category is required.' });
+	});
+
+	it('keeps names, email and phone optional after a lead progresses', () => {
+		const vendor: VendorInput = { ...lead, category: 'Plants', firstName: '', lastName: '', email: '', phone: '' };
+		expect(validateVendor(vendor, 'approved')).toEqual({});
+	});
+
+	it('validates optional email and phone only when values are supplied', () => {
+		const vendor: VendorInput = { ...lead, category: 'Plants', email: 'not-an-email', phone: '123' };
+		expect(validateVendor(vendor, 'applied')).toMatchObject({
+			email: 'Enter a valid email address.',
+			phone: 'Enter a valid phone number (at least 7 digits).'
+		});
 	});
 
 	it('flags incomplete vendors from API data', () => {
