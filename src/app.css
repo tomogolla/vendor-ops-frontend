@@ -44,7 +44,7 @@
   --brand-color-dark: #258b8b;
   --brand-color-soft: rgba(53, 178, 178, 0.12);
   --brand-color-border: rgba(53, 178, 178, 0.28);
-  --base-100: #f4f4f4;
+  --base-100: #FFFAFF;
   --base-200: #e0e0e0;
   --base-300: #d0d0d0;
 }
@@ -55,13 +55,13 @@ html {
 }
 
 body {
-  background: #f4f4f4;
+  background: #FFFAFF;
 }
 
 .btn-brand {
   background-color: var(--brand-color);
   border-color: var(--brand-color);
-  color: white;
+  color: #FFFAFF;
 }
 
 .text-brand {
