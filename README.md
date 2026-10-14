@@ -1,8 +1,9 @@
 # Vendor Ops
 
-Internal tool for The Good Flea team to manage vendors from first lead to approved vendor:
-lead registration, CSV lead imports, applications, discovery calls and reviews, with a shared
-activity timeline for every vendor.
+Internal tool for The Good Flea team to run the vendor sales pipeline (v1.3): applications move
+through stages, each application is an order of booth and add-on lines for market weekends, and
+administrators confirm, waitlist or decline each line against live capacity. Vendors are permanent
+accounts with a derived label, and every vendor has a shared activity timeline.
 
 ## Architecture
 
@@ -16,43 +17,65 @@ Django + Django REST Framework (../backend, separate repo)  ──  PostgreSQL
 
 - **Frontend** (`vendor-ops-frontend`): SvelteKit 3, Svelte 5 runes, Tailwind 4, DaisyUI 5, built with
   `adapter-static` as a single-page app. `src/lib/api.ts` is the fetch wrapper (session cookie, CSRF
-  header, typed errors, 401 → login). `src/lib/vendor-store.ts` is the API client layer and the UI
-  types. No vendor data is kept in browser storage.
+  header, typed errors, 401 → login). API client layers map snake_case payloads to camelCase types:
+  `src/lib/applications.ts` (applications, lines, stages, billing placeholders, summary),
+  `src/lib/catalog.ts` (market weekends, booth variants, add-ons, capacity) and
+  `src/lib/vendor-store.ts` (vendors, tasks, activity, notes, CSV imports). Pure rules the UI relies on
+  (board grouping, days in stage, which stage and line actions a role may take, capacity display,
+  totals rows) live in those modules and are unit-tested against payloads captured from the backend
+  (`src/lib/fixtures/`). No vendor data is kept in browser storage.
+- **Money** is integer cents everywhere in code; `formatMoney(cents)` formats it (USD) for display and
+  `parseDollars(text)` turns typed dollars into cents. Totals and discounts are always the server's.
 - **Backend** (`vendor ops/backend`): Django 6 + DRF, PostgreSQL. Business rules live in services
-  (`vendors/services.py`, `tasks/services.py`, `imports/services.py`); views stay thin.
-- **Auth**: Django session cookies with CSRF protection. Roles are `Administrator` and `Team Member`
-  (a `role` field on a custom user model). Permissions are enforced by the API; the UI only hides
-  what a role cannot do.
+  (`vendors/pipeline.py`, `vendors/services.py`, `catalog/services.py`, `tasks/services.py`,
+  `imports/services.py`); views stay thin.
+- **Auth**: Django session cookies with CSRF protection. Roles are `Administrator` and `Team Member`.
+  Permissions are enforced by the API; the UI hides what a role cannot do and shows the server's message
+  when a request is refused.
 
 ### Core records
 
 | Model | Purpose |
 | --- | --- |
-| Vendor | Permanent profile from first lead onwards. Normalized email/phone/Instagram for matching; journey stage, qualification, latest application status, owner, active / outreach flags. |
-| LeadIntakeEvent | Each time a vendor enters or re-enters: manual registration, CSV import (with batch), application submission. |
-| Application | A formal application; a vendor can have several. Status, reviewer, booth needs, preferred dates, decision. |
-| Task | General task (`DISCOVERY_CALL`, `APPLICATION_REVIEW`, `FOLLOW_UP`) with owner, due date, outcome, attempts, callback and call-script details. At most one open discovery call per vendor and one open review per application (database constraints). |
-| ActivityEvent | Append-only vendor timeline. Not editable through the API or admin. |
-| InternalNote | Typed notes (lead intake, discovery call, qualification, application review, general). |
-| ImportBatch | One confirmed CSV import and its summary. |
+| Vendor | Permanent account for a brand. Normalized email/phone/Instagram for matching; owner, active / outreach flags and a derived **label**: Prospect, Active (an application is Won), Inactive or Suspended. |
+| Application | The pipeline card and the order. **Stage**: New → In review → Awaiting payment → Won, plus Declined and Withdrawn (provisional, shown collapsed). Holds the order discount, billed and first-paid dates, and server-computed totals. |
+| ApplicationLine | A booth variant of a market weekend, or an add-on attached to a booth line. Status: requested, confirmed, waitlisted, declined, cancelled. The unit price is a snapshot. |
+| MarketWeekend, BoothVariant, AddOn | What is sold. Variants have a capacity; add-ons may. Only confirmed lines use capacity, and they hold it until released. |
+| Task | `DISCOVERY_CALL`, `APPLICATION_REVIEW`, `FOLLOW_UP`, linked to the vendor and usually an application. |
+| ActivityEvent | Append-only vendor timeline; events can belong to an application. |
+| InternalNote, LeadIntakeEvent, ImportBatch | Notes, how a vendor entered, and CSV imports. |
 
-The frontend shows one **status** per vendor (`lead`, `applied`, `in_review`, `waitlisted`,
-`approved`, `declined`, `suspended`), which the API derives from journey stage, qualification and
-the latest application.
+### Pipeline rules (enforced by the backend)
 
-### Automation (backend)
+- Every entry (the New application form, the API's vendor registration and CSV import) creates an
+  **application at New** with a discovery call task. If the vendor already has an application at New or
+  In review, the submission's lines and notes are **bundled** into it instead (the API answers 200 with
+  `bundled: true`; the UI shows a notice and opens that application).
+- **Calls** move New to In review: logging any attempt on the application's call task does it. After five
+  unanswered attempts the call closes and the application is flagged `call exhausted`.
+- **Lines** are decided by administrators: Confirm (refused when capacity is short; the server's message
+  includes what is left), Waitlist, Decline, and Release hold (reason required; not allowed once the
+  application is paid). An add-on is confirmed only after its booth line.
+- **Billing placeholders** (`TODO(invoicing)`): Mark billed (In review with a confirmed line → Awaiting
+  payment) and Mark first payment received (→ Won, the vendor becomes Active). Real invoices replace them
+  in the next release.
 
-- **Manual lead** (`POST /vendors/`): normalize contact details → 409 with matches if email, phone or
-  Instagram already exists (re-send with `confirm_duplicate: true` to create anyway; vendors are never
-  merged, and a matching business name alone is only a hint) → vendor, intake event, activity, and a
-  high-priority discovery call for the chosen owner or the team queue, due within 2 business hours
-  (next opening if outside business hours).
-- **Application** (`POST /applications/`): match the vendor by contact details or create one →
-  application, activity, a discovery call (skipped if one is open or the vendor was already reached
-  with an "Interested" call) and a review task.
-- **CSV import**: preview classifies rows as new / matched / possible duplicate / invalid / skipped;
-  confirm re-checks on the server and imports in one transaction. New vendors get a discovery call
-  unless the row is marked already contacted, inactive or excluded from outreach.
+## Routes and menu
+
+The menu (Overview, Applications, Vendors, Market weekends, Tasks, Finance) is defined once in
+`src/lib/nav.ts` and rendered by both the sidebar and the mobile dropdown.
+
+| Route | What it is |
+| --- | --- |
+| `/` | Overview: calls due, applications imported from CSV still at New, stage counts, oldest awaiting payment, capacity alerts. |
+| `/applications` | Board of applications by stage (New, In review, Awaiting payment, Won, collapsed Closed), with a table view. Filters live in the query string (`source`, `owner`, `waitlisted`, `call`, `view`, `stage`, `page`). No drag-and-drop: stage changes go through the application page. |
+| `/applications/new` | New application: vendor details (with duplicate warnings), order lines from the catalog, source, notes, discount (administrators) and an optional first call. |
+| `/applications/[id]` | Application: totals, order lines and line decisions, call actions, stage actions, vendor timeline and notes. |
+| `/vendors`, `/vendors/[id]`, `/vendors/[id]/edit` | Vendors by label with search; vendor overview, applications, bookings, compliance, timeline, notes; Suspend / Reinstate (administrators). |
+| `/market-weekends`, `/market-weekends/new`, `/market-weekends/[id]`, `/market-weekends/[id]/edit` | Weekends with capacity bars; booked vendors and the waitlist with promotion suggestions; weekend, variant and add-on editing (administrators). |
+| `/tasks` | Task Center; tasks open on their application when they have one. |
+| `/finance` | Placeholder until invoices, payments and payers arrive. |
+| `/customers`, `/payments` | Mock pages, not in the menu (`TODO(finance)`). |
 
 ## Local development
 
@@ -71,6 +94,8 @@ Use `psql`, pgAdmin's Query Tool, or any SQL client.
 
 ### 2. Backend (`vendor ops/backend`)
 
+Use the backend branch that carries the v1.3 pipeline (`feat/pipeline-v13` until it is merged).
+
 ```sh
 cd ../backend
 python -m venv .venv
@@ -78,7 +103,7 @@ python -m venv .venv
 pip install -r requirements.txt
 copy .env.example .env              # macOS/Linux: cp .env.example .env — then edit it
 python manage.py migrate
-python manage.py seed_dev           # demo users + vendors; prints the generated passwords
+python manage.py seed_dev           # demo users, two market weekends and applications in every stage
 python manage.py runserver 8000
 ```
 
@@ -87,6 +112,9 @@ python manage.py runserver 8000
 set roles in the Django admin (`/admin/`) or via `POST /api/v1/users/` as an administrator.
 
 ### 3. Frontend (this repo)
+
+The Vite dev server proxies `/api` to the backend on port 8000, so the session and CSRF cookies are
+same-origin. Sign in with a backend user (for example the `seed_dev` users).
 
 ```sh
 npm install
@@ -134,23 +162,27 @@ Frontend (`.env`, see `.env.example`):
 
 ## API overview (`/api/v1/`)
 
+The backend README is the reference; these are the endpoints this frontend uses.
+
 | Endpoint | Methods | Notes |
 | --- | --- | --- |
 | `health/` | GET | Public. Checks the database. |
 | `auth/csrf/`, `auth/login/`, `auth/logout/`, `auth/me/` | GET/POST | Session auth. |
 | `team/` | GET | Active users for owner pickers. |
-| `users/` | GET, POST, PATCH | Administrators only. |
-| `vendors/` | GET, POST | Filters: `status` (comma list), `application_status`, `lead_source`, `owner` (`me`/`none`/id), `call` (`due`/`none`), `created_after/before`, `search`, `ordering`. |
-| `vendors/{id}/` | GET, PATCH | Owner / active / outreach flags: administrators only. |
-| `vendors/{id}/status/` | POST | `{status, note}`; team members may only move a lead to `applied`. |
-| `vendors/{id}/qualification/` | POST | Administrators only. |
-| `vendors/{id}/activity/` | GET | Read-only timeline. |
-| `vendors/{id}/notes/` | GET, POST | Internal notes. |
-| `vendors/duplicates/` | GET | `email`, `phone`, `instagram`, `brand_name`, `exclude`. |
-| `applications/`, `applications/{id}/` | GET, POST, PATCH | Status/reviewer changes: administrators only. |
-| `tasks/`, `tasks/{id}/` | GET, POST, PATCH | Team members see their own tasks plus the unassigned queue, and can claim queue tasks. Filters: `owner`, `task_type`, `status`, `is_open`, `vendor`, `due_before`. |
-| `tasks/{id}/log-call/` | POST | `{outcome, notes, callback_at, call_details}`. |
-| `imports/vendors/preview/`, `imports/vendors/confirm/` | POST (multipart `file`) | Administrators only; `include_lines` imports chosen possible duplicates. |
+| `applications/` | GET, POST | Filters: `stage` (comma list), `has_waitlisted_lines`, `call` (`none` / `attempted_not_reached`), `owner` (vendor owner: `me` / `none` / id), `source`, `weekend`, `vendor`. POST takes `vendor` or `vendor_data`, `source`, `notes`, `requested_lines`; 200 with `bundled: true` when bundled. |
+| `applications/{id}/` | GET, PATCH | Discount fields: administrators only. |
+| `applications/summary/` | GET | Counts per stage (same filters) and the 10 oldest awaiting payment. |
+| `applications/{id}/stage/` | POST | `{stage, reason}`; administrators. |
+| `applications/{id}/lines/` | GET, POST | Any signed-in user may add lines. |
+| `application-lines/{id}/` | GET, PATCH, DELETE | Quantity and delete only while requested. |
+| `application-lines/{id}/confirm/`, `waitlist/`, `decline/`, `release/` | POST | Administrators; `release` needs `reason`. |
+| `applications/{id}/mark-billed/`, `mark-first-payment/` | POST | Administrators; interim placeholders. |
+| `market-weekends/` and `{id}/variants/`, `{id}/add-ons/` | GET, POST, PATCH, DELETE | Writes: administrators. Detail includes capacity usage and promotion suggestions. |
+| `vendors/` | GET, POST | Filters: `label` (comma list), `search`, `owner`, `lead_source`. |
+| `vendors/{id}/`, `vendors/{id}/activity/`, `vendors/{id}/notes/`, `vendors/duplicates/` | GET, PATCH, POST | Profile, timeline, notes, duplicate check. |
+| `vendors/{id}/status/` | POST | Deprecated; used only for Suspend (`suspended`) and Reinstate (`approved`). |
+| `tasks/`, `tasks/{id}/`, `tasks/{id}/log-call/` | GET, POST, PATCH | Filters include `application`, `task_type`, `is_open`, `owner`, `due_before`. |
+| `imports/vendors/preview/`, `imports/vendors/confirm/` | POST (multipart `file`) | Administrators; every row becomes an application at New. |
 
 Lists are paginated (`page`, `page_size` up to 500) and return `{count, next, previous, results}`.
 Unauthenticated requests get 401; forbidden ones 403.
@@ -190,8 +222,8 @@ One Ubuntu Droplet running PostgreSQL, gunicorn (Django) and nginx (static SPA +
 
 Never commit `.env` files, database dumps, or real vendor exports.
 
-## Not in this milestone
+## Not in this release
 
-Invoices and payments, bookings and inventory, Stripe/Shopify, market preparation, the public
-application form, and the customers pages (still mock UI). Market weekends, payments and customers
-routes are unchanged prototypes.
+Invoices, payments and payers (Stripe/Shopify; the billing actions are interim placeholders), the
+calendar view of market weekends, revenue figures, notifications, the public application form, and
+the customers and payments pages (still mock UI, unlinked).

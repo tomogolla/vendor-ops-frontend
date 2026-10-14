@@ -7,15 +7,6 @@
   /** The signed-in person's open-task count, loaded by the app layout. */
   let { openTasks = null }: { openTasks?: number | null } = $props();
 
-  const initials = $derived(
-    (session.user?.name ?? '?')
-      .split(/\s+/)
-      .map((part) => part[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase()
-  );
-
   async function logout() {
     await session.logout();
     await goto('/login');

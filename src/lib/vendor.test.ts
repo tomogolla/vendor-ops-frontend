@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, request, setUnauthorizedHandler, withQuery } from '#lib/api.ts';
+import { createApplication } from '#lib/applications.ts';
 import {
-	createLead,
 	DuplicateVendorError,
 	emptyCallInput,
 	emptyVendorInput,
@@ -15,6 +15,7 @@ import {
 } from '#lib/vendor-store.ts';
 import { callErrors, isIncomplete, validateVendor } from '#lib/vendor-validation.ts';
 import importConfirmFixture from '#lib/fixtures/import-confirm.json';
+import wonFixture from '#lib/fixtures/application-won.json';
 
 type Call = { url: string; init: RequestInit };
 let calls: Call[] = [];
@@ -179,28 +180,30 @@ describe('CSV import result', () => {
 });
 
 describe('API client', () => {
+	// Changed in v1.3: createLead (POST /vendors/) is gone from the UI; every entry is an application.
 	it('sends the CSRF token and JSON body on writes', async () => {
-		mockFetch({ status: 201, body: apiVendor });
-		await createLead({ ...emptyVendorInput(), brandName: 'Moss', instagram: '@moss' });
+		mockFetch({ status: 201, body: wonFixture });
+		await createApplication({ vendor: { ...emptyVendorInput(), brandName: ' Moss ', instagram: '@moss' } });
 		const [call] = calls;
-		expect(call.url).toBe('/api/v1/vendors/');
+		expect(call.url).toBe('/api/v1/applications/');
 		expect(call.init.method).toBe('POST');
 		expect((call.init.headers as Record<string, string>)['X-CSRFToken']).toBe('test-token');
 		expect(call.init.credentials).toBe('include');
-		expect(JSON.parse(call.init.body as string)).toMatchObject({ brand_name: 'Moss', confirm_duplicate: false });
+		expect(JSON.parse(call.init.body as string)).toMatchObject({ vendor_data: { brand_name: 'Moss', instagram: '@moss' } });
 	});
 
 	it('turns a 409 into a DuplicateVendorError with matches', async () => {
 		mockFetch({
 			status: 409,
 			body: {
-				code: 'possible_duplicate',
+				code: 'ambiguous_vendor',
 				matches: [{ vendor: { id: 'v9', brand_name: 'Acme', status: 'lead' }, matched_on: ['email'] }],
 				name_matches: []
 			}
 		});
-		const error = await createLead({ ...emptyVendorInput(), brandName: 'X', email: 'a@b.co' }).catch((e) => e);
+		const error = await createApplication({ vendor: { ...emptyVendorInput(), brandName: 'X', email: 'a@b.co' } }).catch((e) => e);
 		expect(error).toBeInstanceOf(DuplicateVendorError);
+		expect(error.code).toBe('ambiguous_vendor');
 		expect(error.result.matches[0]).toMatchObject({ vendor: { id: 'v9', brandName: 'Acme' }, matchedOn: ['email'] });
 	});
 

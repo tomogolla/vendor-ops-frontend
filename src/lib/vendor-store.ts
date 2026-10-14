@@ -1,9 +1,9 @@
-// API client layer for vendors, applications, tasks, activity and imports. Data lives in
-// PostgreSQL behind the Django API; nothing here is cached in browser storage.
+// API client layer for vendors, tasks, activity, notes and imports (applications live in
+// #lib/applications.ts, the catalog in #lib/catalog.ts). Data lives in PostgreSQL behind the Django
+// API; nothing here is cached in browser storage.
 import { ApiError, request, type Page, type Query } from '#lib/api.ts';
 import {
 	MAX_CALL_ATTEMPTS,
-	type BoothSize,
 	type BusinessRegistration,
 	type CallOutcome,
 	type Category,
@@ -25,16 +25,6 @@ export type VendorStatus =
 	| 'approved'
 	| 'declined'
 	| 'suspended';
-
-export const statusLabels: Record<VendorStatus, string> = {
-	lead: 'Lead',
-	applied: 'Applied',
-	in_review: 'In review',
-	waitlisted: 'Waitlisted',
-	approved: 'Approved',
-	declined: 'Declined',
-	suspended: 'Suspended'
-};
 
 /** Derived by the API (Vendor.label): vendors no longer have a pipeline status in the UI. */
 export type VendorLabel = 'prospect' | 'active' | 'inactive' | 'suspended';
@@ -127,37 +117,11 @@ export type VendorInput = Pick<
 	| 'liabilityInsurance'
 >;
 
-export type BookingInterest = {
-	proposedBoothSize: BoothSize | '';
-	requestedWeekends: string[];
-	needsTent: boolean;
-};
-
 export type CallInput = {
 	outcome: CallOutcome | '';
 	callbackAt: string | null;
 	notes: string;
 	details: CallDetails;
-};
-
-export type CreatableStatus = Extract<VendorStatus, 'lead' | 'applied'>;
-
-export type ApplicationStatus = 'SUBMITTED' | 'IN_REVIEW' | 'WAITLISTED' | 'APPROVED' | 'DECLINED' | 'WITHDRAWN';
-
-export type Application = {
-	id: string;
-	vendorId: string;
-	status: ApplicationStatus;
-	source: string;
-	submittedAt: string;
-	submittedBy: UserSummary | null;
-	reviewerId: string | null;
-	category: string;
-	productDescription: string;
-	booking: BookingInterest;
-	decision: string;
-	decisionReason: string;
-	decidedAt: string | null;
 };
 
 export type TaskType = 'DISCOVERY_CALL' | 'APPLICATION_REVIEW' | 'FOLLOW_UP';
@@ -230,7 +194,6 @@ export function emptyVendorInput(): VendorInput {
 	};
 }
 
-export const emptyBooking = (): BookingInterest => ({ proposedBoothSize: '', requestedWeekends: [], needsTent: false });
 
 export const emptyCallDetails = (): CallDetails => ({
 	interestLevel: null,
@@ -252,7 +215,6 @@ export function toVendorInput(vendor: Vendor): VendorInput {
 }
 
 export const needsCall = (vendor: Vendor) => vendor.call.openTaskId !== null;
-export const neverCalled = (vendor: Vendor) => vendor.call.neverCalled;
 
 export const normaliseEmail = (email: string) => email.trim().toLowerCase();
 export const normaliseInstagram = (handle: string) => handle.replace(/[@\s]/g, '').toLowerCase();
@@ -372,29 +334,6 @@ export const vendorSummary = (raw: Json): VendorSummary => ({
 	status: raw.status
 });
 
-export function fromApiApplication(raw: Json): Application {
-	const booth = raw.booth_requirements ?? {};
-	return {
-		id: raw.id,
-		vendorId: raw.vendor,
-		status: raw.status,
-		source: raw.source ?? '',
-		submittedAt: raw.submitted_at,
-		submittedBy: user(raw.submitted_by),
-		reviewerId: raw.reviewer ?? null,
-		category: raw.category ?? '',
-		productDescription: raw.product_description ?? '',
-		booking: {
-			proposedBoothSize: booth.size ?? '',
-			needsTent: Boolean(booth.needs_tent),
-			requestedWeekends: raw.preferred_market_dates ?? []
-		},
-		decision: raw.decision ?? '',
-		decisionReason: raw.decision_reason ?? '',
-		decidedAt: raw.decided_at ?? null
-	};
-}
-
 export function fromApiTask(raw: Json): Task {
 	return {
 		id: raw.id,
@@ -482,45 +421,6 @@ export async function getVendor(id: string): Promise<Vendor> {
 	return fromApiVendor(await request<Json>(`/vendors/${id}/`));
 }
 
-export async function createLead(
-	input: VendorInput,
-	options: { ownerId?: string | null; confirmDuplicate?: boolean } = {}
-): Promise<Vendor> {
-	try {
-		const raw = await request<Json>('/vendors/', {
-			method: 'POST',
-			json: { ...toApiVendor(input), owner: options.ownerId ?? null, confirm_duplicate: options.confirmDuplicate ?? false }
-		});
-		return fromApiVendor(raw);
-	} catch (error) {
-		rethrowDuplicate(error);
-	}
-}
-
-export async function submitApplication(args: {
-	vendorId?: string;
-	vendor?: VendorInput;
-	booking?: BookingInterest;
-	source?: string;
-}): Promise<Application> {
-	const booking = args.booking ?? emptyBooking();
-	try {
-		const raw = await request<Json>('/applications/', {
-			method: 'POST',
-			json: {
-				vendor: args.vendorId,
-				vendor_data: args.vendor ? toApiVendor(args.vendor) : undefined,
-				source: args.source ?? 'Staff entry',
-				booth_requirements: { size: booking.proposedBoothSize, needs_tent: booking.needsTent },
-				preferred_market_dates: booking.requestedWeekends
-			}
-		});
-		return fromApiApplication(raw);
-	} catch (error) {
-		rethrowDuplicate(error);
-	}
-}
-
 export async function updateVendor(id: string, patch: Partial<VendorInput> & { ownerId?: string | null }): Promise<Vendor> {
 	const { ownerId, ...fields } = patch;
 	const body = toApiVendor(fields);
@@ -561,11 +461,6 @@ export async function findDuplicates(query: {
 		}
 	});
 	return fromApiDuplicates(raw);
-}
-
-export async function listApplications(vendorId: string): Promise<Application[]> {
-	const page = await request<Page<Json>>('/applications/', { query: { vendor: vendorId, page_size: 100 } });
-	return page.results.map(fromApiApplication);
 }
 
 export async function listActivity(vendorId: string, page = 1): Promise<Page<ActivityEvent>> {
