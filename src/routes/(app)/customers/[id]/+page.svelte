@@ -1,3 +1,4 @@
+<!-- TODO(finance): mock page, unlinked from the menu in v1.3; replaced when invoices, payments and payers arrive. -->
 <script lang="ts">
     import type { PageProps } from './$types';
 
