@@ -341,6 +341,57 @@ export async function decideLine(lineId: string, decision: LineDecision, reason 
 	return fromApiLine(await request<Json>(`/application-lines/${lineId}/${decision}/`, { method: 'POST', json }));
 }
 
+// --- Order form drafts ---------------------------------------------------------------------
+
+/** One booth row in the order-lines picker; strings are what the inputs hold. */
+export type OrderLineDraft = {
+	key: string;
+	weekendId: string;
+	variantId: string;
+	quantity: number | null;
+	addOnIds: string[];
+};
+
+/** Validates the picker and returns the lines to submit, or the first problem per row. */
+export function orderLinesFromDrafts(drafts: readonly OrderLineDraft[]): { lines: OrderLineInput[]; errors: Record<string, string> } {
+	const errors: Record<string, string> = {};
+	const seen = new Set<string>();
+	const lines: OrderLineInput[] = [];
+	for (const draft of drafts) {
+		if (!draft.weekendId || !draft.variantId) errors[draft.key] = 'Choose a weekend and a booth.';
+		else if (!Number.isInteger(draft.quantity) || (draft.quantity ?? 0) < 1) errors[draft.key] = 'Quantity must be a whole number of at least 1.';
+		else if (seen.has(draft.variantId)) errors[draft.key] = 'This booth is already in the order; change the quantity on that row instead.';
+		if (errors[draft.key]) continue;
+		seen.add(draft.variantId);
+		lines.push({
+			variantId: draft.variantId,
+			quantity: draft.quantity as number,
+			addOns: draft.addOnIds.map((addOnId) => ({ addOnId, quantity: 1 }))
+		});
+	}
+	return { lines, errors };
+}
+
+/** Turns the discount inputs into the API value: a percent (0-100, two decimals) or dollars -> cents. */
+export function discountFromInput(
+	type: DiscountType,
+	text: string,
+	label: string,
+	parseDollars: (text: string) => number | null
+): { discount: Discount } | { error: string } {
+	if (type === 'NONE') return { discount: { type, value: '0', label: '' } };
+	const trimmed = text.trim();
+	if (type === 'PERCENT') {
+		if (!/^\d{1,3}(\.\d{1,2})?$/.test(trimmed) || Number(trimmed) > 100) {
+			return { error: 'Enter a percent from 0 to 100 (up to two decimals).' };
+		}
+		return { discount: { type, value: trimmed, label: label.trim() } };
+	}
+	const cents = parseDollars(trimmed);
+	if (cents === null) return { error: 'Enter a dollar amount, for example 25 or 25.50.' };
+	return { discount: { type, value: String(cents), label: label.trim() } };
+}
+
 // --- Board filters (query-string driven, so views are linkable) ----------------------------
 
 export type CallFilter = 'none' | 'attempted_not_reached' | 'exhausted';

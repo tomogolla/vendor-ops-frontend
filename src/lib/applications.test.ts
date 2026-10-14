@@ -7,6 +7,7 @@ import {
 	daysInStage,
 	decideLine,
 	describeDiscount,
+	discountFromInput,
 	filtersFromParams,
 	filtersHref,
 	filtersToQuery,
@@ -14,14 +15,16 @@ import {
 	fromApiSubmission,
 	fromApiSummary,
 	groupByStage,
+	orderLinesFromDrafts,
 	submissionOutcome,
 	totalsRows,
 	type Application,
 	type ApplicationLine,
 	type LineStatus,
+	type OrderLineDraft,
 	type Stage
 } from '#lib/applications.ts';
-import { formatMoney } from '#lib/format.ts';
+import { formatMoney, parseDollars } from '#lib/format.ts';
 import { fromApiVendor } from '#lib/vendor-store.ts';
 import bundledFixture from '#lib/fixtures/application-bundled.json';
 import waitlistedFixture from '#lib/fixtures/application-waitlisted.json';
@@ -125,6 +128,41 @@ describe('board grouping and days in stage', () => {
 		expect(daysInStage(entered, new Date('2026-10-14T11:59:00Z'))).toBe(3);
 		expect(daysInStage(entered, new Date('2026-10-01T00:00:00Z'))).toBe(0);
 		expect(daysInStage({ stageEnteredAt: null })).toBeNull();
+	});
+});
+
+describe('order form', () => {
+	const draft = (key: string, patch: Partial<OrderLineDraft> = {}): OrderLineDraft => ({
+		key, weekendId: 'w1', variantId: 'v1', quantity: 1, addOnIds: [], ...patch
+	});
+
+	it('builds order lines with add-ons attached to their booth', () => {
+		const result = orderLinesFromDrafts([draft('a', { quantity: 2, addOnIds: ['tent'] }), draft('b', { variantId: 'v2' })]);
+		expect(result.errors).toEqual({});
+		expect(result.lines).toEqual([
+			{ variantId: 'v1', quantity: 2, addOns: [{ addOnId: 'tent', quantity: 1 }] },
+			{ variantId: 'v2', quantity: 1, addOns: [] }
+		]);
+	});
+
+	it('reports incomplete rows, bad quantities and duplicate booths', () => {
+		const { errors, lines } = orderLinesFromDrafts([
+			draft('a'), draft('b', { variantId: '' }), draft('c', { quantity: 0 }), draft('d', { quantity: 1.5 }), draft('e')
+		]);
+		expect(Object.keys(errors)).toEqual(['b', 'c', 'd', 'e']);
+		expect(errors.e).toMatch(/already in the order/);
+		expect(lines).toHaveLength(1);
+	});
+
+	it('turns discount inputs into API values', () => {
+		expect(discountFromInput('PERCENT', '12.5', ' New Vendor Trial ', parseDollars)).toEqual({
+			discount: { type: 'PERCENT', value: '12.5', label: 'New Vendor Trial' }
+		});
+		expect(discountFromInput('FIXED', '$25.50', '', parseDollars)).toEqual({ discount: { type: 'FIXED', value: '2550', label: '' } });
+		expect(discountFromInput('NONE', 'x', 'y', parseDollars)).toEqual({ discount: { type: 'NONE', value: '0', label: '' } });
+		expect(discountFromInput('PERCENT', '101', '', parseDollars)).toHaveProperty('error');
+		expect(discountFromInput('PERCENT', '-1', '', parseDollars)).toHaveProperty('error');
+		expect(discountFromInput('FIXED', 'ten', '', parseDollars)).toHaveProperty('error');
 	});
 });
 

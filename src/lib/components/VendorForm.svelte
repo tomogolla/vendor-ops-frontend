@@ -1,11 +1,9 @@
 <script lang="ts" module>
-	import type { BookingInterest, CallInput, CreatableStatus, UserSummary, VendorInput } from '#lib/vendor-store.ts';
+	import type { CallInput, UserSummary, VendorInput } from '#lib/vendor-store.ts';
 
-	export type FormSection = 'status' | 'contact' | 'brand' | 'lead' | 'call' | 'compliance' | 'booking';
+	export type FormSection = 'status' | 'contact' | 'brand' | 'lead' | 'call' | 'compliance';
 	export type VendorFormPayload = {
 		vendor: VendorInput;
-		status: CreatableStatus;
-		booking: BookingInterest;
 		call: CallInput;
 		ownerId: string | null | undefined;
 		confirmDuplicate: boolean;
@@ -14,12 +12,10 @@
 
 <script lang="ts">
 	import { beforeNavigate } from '$app/navigation';
-	import { tick, untrack } from 'svelte';
+	import { tick, untrack, type Snippet } from 'svelte';
 	import CallLogFields from '#lib/components/CallLogFields.svelte';
-	import MarketWeekendSelect from '#lib/components/MarketWeekendSelect.svelte';
-	import StatusBadge from '#lib/components/StatusBadge.svelte';
+	import LabelBadge from '#lib/components/LabelBadge.svelte';
 	import {
-		boothSizes,
 		businessRegistration,
 		categories,
 		commitmentLevels,
@@ -28,58 +24,60 @@
 	} from '#lib/options.ts';
 	import {
 		DuplicateVendorError,
-		emptyBooking,
 		emptyCallInput,
 		emptyVendorInput,
 		findDuplicates,
 		normaliseEmail,
 		normaliseInstagram,
-		statusLabels,
 		toVendorInput,
 		type DuplicateMatch,
-		type Vendor
+		type Vendor,
+		type VendorStatus
 	} from '#lib/vendor-store.ts';
 	import { callErrors, requiredErrors, validateVendor, type FieldName } from '#lib/vendor-validation.ts';
 
 	type Props = {
+		/** create: a new application (every entry starts at New with a call task); edit: vendor details. */
 		mode: 'create' | 'edit';
 		initial?: Vendor;
-		/** Receives trimmed input plus, in create mode, the starting status, booking interest and first call. */
+		/** Receives trimmed input plus, in create mode, the first call. Throw an Error to show its message. */
 		onsave: (payload: VendorFormPayload) => Promise<unknown> | void;
-		/** Set a section to false to hide it, e.g. for a public application form. Call and booking default to create mode only. */
+		/** Set a section to false to hide it, e.g. for a public application form. Call defaults to create mode only. */
 		fields?: Partial<Record<FormSection, boolean>>;
+		/** Extra sections rendered before the actions, e.g. the order lines of a new application. */
+		extra?: Snippet;
+		/** Set when the extra sections changed, so leaving the page asks first. */
+		extraDirty?: boolean;
 		cancelHref?: string;
-		/** Team members for the owner picker; omit to hide it. */
+		/** Team members for the owner picker (edit mode); omit to hide it. */
 		team?: UserSummary[];
 		currentUserId?: string;
 		canAssignOthers?: boolean;
 	};
 
-	let { mode, initial, onsave, fields = {}, cancelHref, team, currentUserId, canAssignOthers = false }: Props = $props();
+	let {
+		mode, initial, onsave, fields = {}, extra, extraDirty = false, cancelHref, team, currentUserId, canAssignOthers = false
+	}: Props = $props();
 
 	const uid = $props.id();
 	const id = (name: string) => `${uid}-${name}`;
 	const show = (section: FormSection) => {
 		if (section === 'call') return fields.call ?? mode === 'create';
-		// Booking interest belongs to an application, so it is only asked for when one is created.
-		if (section === 'booking') return fields.booking ?? (mode === 'create' && status === 'applied');
 		return fields[section] !== false;
 	};
-	const creatableStatuses: CreatableStatus[] = ['lead', 'applied'];
 
 	const start = untrack(() => (initial ? toVendorInput(initial) : emptyVendorInput()));
 	let form = $state(start);
 	let tagsText = $state(start.tags.join(', '));
-	let status = $state<CreatableStatus>('lead');
-	let booking = $state(emptyBooking());
 	let ownerId = $state<string>(untrack(() => initial?.owner?.id ?? ''));
 	const initialOwnerId = untrack(() => initial?.owner?.id ?? '');
 	const ownerOptions = $derived(
 		(team ?? []).filter((member) => canAssignOthers || member.id === currentUserId || member.id === initialOwnerId)
 	);
-	const showOwner = $derived(Boolean(team) && (mode === 'create' ? status === 'lead' : canAssignOthers));
+	// TODO(backend): POST /applications/ cannot set an owner, so the picker is only offered when editing.
+	const showOwner = $derived(Boolean(team) && mode === 'edit' && canAssignOthers);
 	let call = $state(emptyCallInput());
-	const baseline = JSON.stringify([start, start.tags.join(', '), 'lead', emptyBooking(), emptyCallInput()]);
+	const baseline = JSON.stringify([start, start.tags.join(', '), emptyCallInput()]);
 
 	let formEl: HTMLFormElement | undefined = $state();
 	let submitted = $state(false);
@@ -89,9 +87,12 @@
 	let duplicates = $state<DuplicateMatch[]>([]);
 	let warnedFor = $state<string | null>(null);
 
-	const validationStatus = $derived(mode === 'edit' && initial ? initial.status : status);
+	// The validation rules are unchanged: a new entry is an application, validated as 'applied'.
+	const validationStatus: VendorStatus = $derived(mode === 'edit' && initial ? initial.status : 'applied');
 	const required = $derived(new Set(Object.keys(requiredErrors(emptyVendorInput(), validationStatus))));
-	const dirty = $derived(JSON.stringify([form, tagsText, status, booking, call]) !== baseline || ownerId !== initialOwnerId);
+	const dirty = $derived(
+		extraDirty || JSON.stringify([form, tagsText, call]) !== baseline || ownerId !== initialOwnerId
+	);
 	const errors = $derived(submitted ? allErrors() : {});
 	const duplicateKey = $derived(
 		`${normaliseEmail(form.email)}|${form.phone.replace(/\D/g, '')}|${normaliseInstagram(form.instagram)}`
@@ -157,8 +158,6 @@
 			saved = true;
 			await onsave({
 				vendor: input,
-				status,
-				booking: $state.snapshot(booking),
 				call: $state.snapshot(call),
 				ownerId: showOwner && ownerId !== initialOwnerId ? ownerId || null : undefined,
 				confirmDuplicate: warnedFor === duplicateKey && duplicates.length > 0
@@ -193,28 +192,14 @@
 {/snippet}
 
 <form bind:this={formEl} class="flex flex-col gap-4" novalidate onsubmit={handleSubmit}>
-	{#if show('status')}
+	{#if show('status') && mode === 'edit' && initial}
 		<section class="card bg-base-100 border border-base-200 shadow-sm">
 			<div class="card-body gap-3">
-				<h2 class="card-title text-sm">Status</h2>
-				{#if mode === 'create'}
-					<div class="flex flex-col gap-1 max-w-xs">
-						<label class="text-sm font-medium" for={id('status')}>Starting status</label>
-						<select id={id('status')} class="input-line" bind:value={status}>
-							{#each creatableStatuses as option (option)}
-								<option value={option}>{statusLabels[option]}</option>
-							{/each}
-						</select>
-						<p class="text-xs text-base-content/60">
-							Leads only need a brand name and one way to reach them.
-						</p>
-					</div>
-				{:else if initial}
-					<div class="flex items-center gap-3">
-						<StatusBadge status={initial.status} size="md" />
-						<p class="text-xs text-base-content/60">Change status from the vendor profile.</p>
-					</div>
-				{/if}
+				<h2 class="card-title text-sm">Label</h2>
+				<div class="flex items-center gap-3">
+					<LabelBadge label={initial.label} size="md" />
+					<p class="text-xs text-base-content/60">Derived from the vendor's applications; suspend or reinstate from the vendor profile.</p>
+				</div>
 			</div>
 		</section>
 	{/if}
@@ -336,7 +321,7 @@
 									<option value={member.id}>{member.id === currentUserId ? `Me (${member.name})` : member.name}</option>
 								{/each}
 							</select>
-							<p id={id('owner-hint')} class="text-xs text-base-content/60">The discovery call task goes to the owner.</p>
+							<p id={id('owner-hint')} class="text-xs text-base-content/60">The team member who looks after this vendor.</p>
 						</div>
 					{/if}
 					<div class="flex flex-col gap-1 sm:col-span-2">
@@ -388,33 +373,7 @@
 		</section>
 	{/if}
 
-	{#if show('booking')}
-		<section class="card bg-base-100 border border-base-200 shadow-sm">
-			<div class="card-body gap-4">
-				<h2 class="card-title text-sm">Booking interest</h2>
-				<div class="grid gap-4 sm:grid-cols-2">
-					<div class="flex flex-col gap-1">
-						<label class="text-sm font-medium" for={id('proposedBoothSize')}>Proposed booth size</label>
-						<select id={id('proposedBoothSize')} class="input-line" bind:value={booking.proposedBoothSize}>
-							<option value="">Not sure yet</option>
-							{#each boothSizes as option (option)}
-								<option value={option}>{option}</option>
-							{/each}
-						</select>
-					</div>
-					<div class="flex items-end">
-						<label class="label cursor-pointer gap-2 text-sm text-base-content" for={id('needsTent')}>
-							<input id={id('needsTent')} type="checkbox" class="checkbox checkbox-sm" bind:checked={booking.needsTent} />
-							Needs a tent
-						</label>
-					</div>
-					<div class="sm:col-span-2">
-						<MarketWeekendSelect bind:selected={booking.requestedWeekends} label="Requested weekends" />
-					</div>
-				</div>
-			</div>
-		</section>
-	{/if}
+	{@render extra?.()}
 
 	{#if showDuplicates}
 		<div role="alert" class="alert alert-warning flex flex-col items-start gap-2">
@@ -432,8 +391,11 @@
 					</li>
 				{/each}
 			</ul>
-			{#if mode === 'create' && status === 'applied'}
-				<p class="text-xs">Submitting will add this application to the matching vendor rather than create a new one.</p>
+			{#if mode === 'create'}
+				<p class="text-xs">
+					Submitting adds this application to the matching vendor rather than creating a new one. If that vendor already
+					has an application at New or In review, the order lines and notes are added to it.
+				</p>
 			{/if}
 			<p class="text-xs">Links open in a new tab so you don't lose this form.</p>
 		</div>
@@ -449,9 +411,9 @@
 		{/if}
 		<button type="submit" class="btn btn-primary btn-sm" disabled={saving}>
 			{#if showDuplicates}
-				{mode === 'edit' ? 'Save anyway' : status === 'applied' ? 'Submit application' : 'Create anyway'}
+				{mode === 'edit' ? 'Save anyway' : 'Submit application'}
 			{:else}
-				{mode === 'create' ? 'Create vendor' : 'Save changes'}
+				{mode === 'create' ? 'Create application' : 'Save changes'}
 			{/if}
 		</button>
 	</div>
