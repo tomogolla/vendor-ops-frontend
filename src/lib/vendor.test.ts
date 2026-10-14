@@ -5,6 +5,7 @@ import {
 	DuplicateVendorError,
 	emptyCallInput,
 	emptyVendorInput,
+	fromApiImportResult,
 	fromApiVendor,
 	logCall,
 	setStatus,
@@ -13,6 +14,7 @@ import {
 	type VendorStatus
 } from '#lib/vendor-store.ts';
 import { callErrors, isIncomplete, validateVendor } from '#lib/vendor-validation.ts';
+import importConfirmFixture from '#lib/fixtures/import-confirm.json';
 
 type Call = { url: string; init: RequestInit };
 let calls: Call[] = [];
@@ -157,6 +159,22 @@ describe('API mapping', () => {
 		expect(withQuery('/vendors/', { status: 'lead,applied', owner: '', page: 2, call: undefined })).toBe(
 			'/vendors/?status=lead%2Capplied&page=2'
 		);
+	});
+});
+
+describe('CSV import result', () => {
+	it('maps the confirm response (captured payload)', () => {
+		expect(fromApiImportResult(importConfirmFixture)).toEqual({
+			created: 1,
+			matched: 1,
+			skipped: 0,
+			invalid: 0,
+			callTasksCreated: 1,
+			applicationsCreated: 2,
+			applicationsBundled: 0,
+			vendorIds: importConfirmFixture.vendor_ids,
+			batchId: importConfirmFixture.batch_id
+		});
 	});
 });
 

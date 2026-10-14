@@ -2,7 +2,6 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import AsyncState from '#lib/components/AsyncState.svelte';
-	import StatusBadge from '#lib/components/StatusBadge.svelte';
 	import type { Page, Query } from '#lib/api.ts';
 	import { formatDateTime } from '#lib/format.ts';
 	import { Resource } from '#lib/resource.svelte.ts';
@@ -60,6 +59,8 @@
 	$effect(loadCounts);
 
 	const overdue = (task: Task) => task.isOpen && task.dueAt !== null && new Date(task.dueAt).getTime() < Date.now();
+	/** Tasks open on their application when they belong to one, otherwise on the vendor. */
+	const taskHref = (task: Task) => (task.applicationId ? `/applications/${task.applicationId}` : `/vendors/${task.vendor.id}`);
 	const canAct = (task: Task) => session.isAdmin || task.owner === null || task.owner.id === session.user?.id;
 
 	async function change(task: Task, patch: Parameters<typeof updateTask>[1]) {
@@ -134,8 +135,8 @@
 									<td class="font-medium">{task.title}</td>
 									<td>
 										<div class="flex flex-wrap items-center gap-1">
-											<a href={`/vendors/${task.vendor.id}`} class="hover:underline">{task.vendor.brandName}</a>
-											<StatusBadge status={task.vendor.status} />
+											<a href={taskHref(task)} class="hover:underline">{task.vendor.brandName}</a>
+											{#if task.applicationId}<a href={`/vendors/${task.vendor.id}`} class="text-xs link link-hover text-base-content/60">vendor<span class="sr-only"> profile for {task.vendor.brandName}</span></a>{/if}
 										</div>
 										<div class="text-xs text-slate-400">{task.vendor.phone || task.vendor.email || task.vendor.instagram}</div>
 									</td>
@@ -155,7 +156,7 @@
 											{/if}
 											{#if task.isOpen && canAct(task)}
 												{#if task.taskType === 'DISCOVERY_CALL' || task.taskType === 'FOLLOW_UP'}
-													<a href={`/vendors/${task.vendor.id}#call`} class="btn btn-xs btn-primary">Log call</a>
+													<a href={`${taskHref(task)}#call`} class="btn btn-xs btn-primary">Log call</a>
 												{/if}
 												{#if task.taskType !== 'DISCOVERY_CALL'}
 													<button type="button" class="btn btn-xs btn-outline" disabled={working === task.id} onclick={() => change(task, { status: 'COMPLETED' })}>

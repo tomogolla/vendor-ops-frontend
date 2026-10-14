@@ -634,14 +634,34 @@ export type ImportRow = {
 	matches: { vendor: { id: string; brand_name: string; status: VendorStatus }; matched_on: string[] }[];
 };
 export type ImportPreview = { rows: ImportRow[]; counts: Record<ImportClassification, number>; ignoredHeaders: string[] };
+/** Every imported row becomes an application at New; matched rows attach to the existing vendor
+ * (a new application, or bundled into its open one). */
 export type ImportResult = {
+	/** New vendors created. */
 	created: number;
+	/** Rows matched to an existing vendor. */
 	matched: number;
 	skipped: number;
 	invalid: number;
 	callTasksCreated: number;
+	applicationsCreated: number;
+	/** Matched rows added to the vendor's open application instead of starting one. */
+	applicationsBundled: number;
+	vendorIds: string[];
 	batchId: string;
 };
+
+export const fromApiImportResult = (raw: Json): ImportResult => ({
+	created: raw.created,
+	matched: raw.matched,
+	skipped: raw.skipped,
+	invalid: raw.invalid,
+	callTasksCreated: raw.call_tasks_created,
+	applicationsCreated: raw.applications_created ?? 0,
+	applicationsBundled: raw.applications_bundled ?? 0,
+	vendorIds: raw.vendor_ids ?? [],
+	batchId: raw.batch_id
+});
 
 function csvForm(file: File, includeLines: number[] = []) {
 	const form = new FormData();
@@ -661,12 +681,5 @@ export async function previewImport(file: File): Promise<ImportPreview> {
 
 export async function confirmImport(file: File, includeLines: number[]): Promise<ImportResult> {
 	const raw = await request<Json>('/imports/vendors/confirm/', { method: 'POST', form: csvForm(file, includeLines) });
-	return {
-		created: raw.created,
-		matched: raw.matched,
-		skipped: raw.skipped,
-		invalid: raw.invalid,
-		callTasksCreated: raw.call_tasks_created,
-		batchId: raw.batch_id
-	};
+	return fromApiImportResult(raw);
 }
