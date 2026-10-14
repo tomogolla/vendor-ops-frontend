@@ -341,6 +341,65 @@ export async function decideLine(lineId: string, decision: LineDecision, reason 
 	return fromApiLine(await request<Json>(`/application-lines/${lineId}/${decision}/`, { method: 'POST', json }));
 }
 
+// --- Board filters (query-string driven, so views are linkable) ----------------------------
+
+export type CallFilter = 'none' | 'attempted_not_reached' | 'exhausted';
+
+export const callFilterLabels: Record<CallFilter, string> = {
+	none: 'Not called',
+	attempted_not_reached: 'Attempted, not reached',
+	exhausted: 'Call exhausted'
+};
+
+/** Call filters the API supports. TODO(backend): `call_exhausted` has no list filter yet. */
+export const SUPPORTED_CALL_FILTERS: readonly CallFilter[] = ['none', 'attempted_not_reached'];
+
+export type BoardFilters = {
+	source: string;
+	owner: '' | 'me' | 'none';
+	waitlisted: boolean;
+	call: CallFilter | '';
+};
+
+export type ParamsLike = Pick<URLSearchParams, 'get' | 'toString'>;
+
+export function filtersFromParams(params: ParamsLike): BoardFilters {
+	const owner = params.get('owner');
+	const call = params.get('call');
+	return {
+		source: params.get('source') ?? '',
+		owner: owner === 'me' || owner === 'none' ? owner : '',
+		waitlisted: params.get('waitlisted') === '1',
+		call: call && call in callFilterLabels ? (call as CallFilter) : ''
+	};
+}
+
+/** API query for the filters. Unsupported filters are reported, never applied client-side. */
+export function filtersToQuery(filters: BoardFilters): { query: Query; unsupported: string[] } {
+	const query: Query = {
+		source: filters.source || undefined,
+		owner: filters.owner || undefined,
+		has_waitlisted_lines: filters.waitlisted ? true : undefined
+	};
+	const unsupported: string[] = [];
+	if (filters.call && SUPPORTED_CALL_FILTERS.includes(filters.call)) query.call = filters.call;
+	else if (filters.call) unsupported.push(callFilterLabels[filters.call]);
+	return { query, unsupported };
+}
+
+/** Builds /applications?… for a filter set, keeping other params (view, stage, page). */
+export function filtersHref(base: ParamsLike, filters: BoardFilters): string {
+	const params = new URLSearchParams(base.toString());
+	const set = (key: string, value: string) => (value ? params.set(key, value) : params.delete(key));
+	set('source', filters.source);
+	set('owner', filters.owner);
+	set('waitlisted', filters.waitlisted ? '1' : '');
+	set('call', filters.call);
+	params.delete('page');
+	const text = params.toString();
+	return text ? `/applications?${text}` : '/applications';
+}
+
 // --- Pure helpers --------------------------------------------------------------------------
 
 export function groupByStage(applications: readonly Application[]): Record<Stage, Application[]> {

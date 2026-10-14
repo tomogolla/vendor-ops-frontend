@@ -7,6 +7,9 @@ import {
 	daysInStage,
 	decideLine,
 	describeDiscount,
+	filtersFromParams,
+	filtersHref,
+	filtersToQuery,
 	fromApiApplication,
 	fromApiSubmission,
 	fromApiSummary,
@@ -122,6 +125,40 @@ describe('board grouping and days in stage', () => {
 		expect(daysInStage(entered, new Date('2026-10-14T11:59:00Z'))).toBe(3);
 		expect(daysInStage(entered, new Date('2026-10-01T00:00:00Z'))).toBe(0);
 		expect(daysInStage({ stageEnteredAt: null })).toBeNull();
+	});
+});
+
+describe('board filters', () => {
+	it('reads filters from the query string, ignoring unknown values', () => {
+		expect(filtersFromParams(new URLSearchParams('source=CSV+import&owner=me&waitlisted=1&call=none'))).toEqual({
+			source: 'CSV import',
+			owner: 'me',
+			waitlisted: true,
+			call: 'none'
+		});
+		expect(filtersFromParams(new URLSearchParams('owner=bob&call=sometimes'))).toEqual({
+			source: '',
+			owner: '',
+			waitlisted: false,
+			call: ''
+		});
+	});
+
+	it('maps filters to the API and reports what the API cannot filter', () => {
+		const filters = { source: 'Staff entry', owner: 'none' as const, waitlisted: true, call: 'attempted_not_reached' as const };
+		expect(filtersToQuery(filters)).toEqual({
+			query: { source: 'Staff entry', owner: 'none', has_waitlisted_lines: true, call: 'attempted_not_reached' },
+			unsupported: []
+		});
+		const exhausted = filtersToQuery({ source: '', owner: '', waitlisted: false, call: 'exhausted' });
+		expect(exhausted.query.call).toBeUndefined();
+		expect(exhausted.unsupported).toEqual(['Call exhausted']);
+	});
+
+	it('builds linkable hrefs that keep the view and reset paging', () => {
+		const base = new URLSearchParams('view=table&page=3&owner=me');
+		expect(filtersHref(base, { source: '', owner: '', waitlisted: true, call: '' })).toBe('/applications?view=table&waitlisted=1');
+		expect(filtersHref(new URLSearchParams(), { source: '', owner: '', waitlisted: false, call: '' })).toBe('/applications');
 	});
 });
 
