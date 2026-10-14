@@ -1,0 +1,260 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '#lib/api.ts';
+import {
+	availableLineActions,
+	availableStageActions,
+	createApplication,
+	daysInStage,
+	decideLine,
+	describeDiscount,
+	fromApiApplication,
+	fromApiSubmission,
+	fromApiSummary,
+	groupByStage,
+	submissionOutcome,
+	totalsRows,
+	type Application,
+	type ApplicationLine,
+	type LineStatus,
+	type Stage
+} from '#lib/applications.ts';
+import { formatMoney } from '#lib/format.ts';
+import { fromApiVendor } from '#lib/vendor-store.ts';
+import bundledFixture from '#lib/fixtures/application-bundled.json';
+import waitlistedFixture from '#lib/fixtures/application-waitlisted.json';
+import wonFixture from '#lib/fixtures/application-won.json';
+import errorsFixture from '#lib/fixtures/errors.json';
+import pageFixture from '#lib/fixtures/applications-page.json';
+import summaryFixture from '#lib/fixtures/summary.json';
+import vendorFixture from '#lib/fixtures/vendor-active.json';
+
+let calls: { url: string; init: RequestInit }[] = [];
+function mockFetch(...responses: { status: number; body?: unknown }[]) {
+	calls = [];
+	const queue = [...responses];
+	vi.stubGlobal(
+		'fetch',
+		vi.fn(async (url: string, init: RequestInit = {}) => {
+			calls.push({ url, init });
+			const next = queue.shift() ?? { status: 200, body: {} };
+			return new Response(next.body === undefined ? null : JSON.stringify(next.body), { status: next.status });
+		})
+	);
+}
+beforeEach(() => vi.stubGlobal('document', { cookie: 'csrftoken=test-token' }));
+afterEach(() => vi.unstubAllGlobals());
+
+const won = fromApiApplication(wonFixture);
+const waitlisted = fromApiApplication(waitlistedFixture);
+
+describe('application mapping (captured payloads)', () => {
+	it('maps an application with lines, discount and server totals', () => {
+		expect(won).toMatchObject({
+			vendorBrand: 'Acme Corporation',
+			vendorLabel: 'active',
+			stage: 'WON',
+			source: 'Staff entry',
+			callAttempts: 1,
+			hasWaitlistedLines: false,
+			callExhausted: false,
+			discount: { type: 'PERCENT', value: '10.00', label: 'New Vendor Trial' },
+			totals: {
+				currency: 'USD',
+				requestedTotalCents: 34000,
+				confirmedSubtotalCents: 34000,
+				discountCents: 3400,
+				confirmedTotalCents: 30600
+			}
+		});
+		expect(won.firstPaidAt).not.toBeNull();
+		expect(won.vendor).toMatchObject({ brandName: 'Acme Corporation', email: 'cy@acme.example.com' });
+	});
+
+	it('maps booth and add-on lines', () => {
+		const [booth, tent] = won.lines;
+		expect(booth).toMatchObject({
+			kind: 'booth',
+			productName: '8ft x 8ft',
+			quantity: 2,
+			unitPriceCents: 15000,
+			totalCents: 30000,
+			status: 'CONFIRMED',
+			parentLineId: null,
+			weekend: { label: 'Oct 10 & 11', startDate: '2026-10-10' }
+		});
+		expect(tent).toMatchObject({ kind: 'add_on', productName: 'Tent rental', parentLineId: booth.id, variantId: null });
+	});
+
+	it('maps waitlisted lines and the flag', () => {
+		expect(waitlisted.hasWaitlistedLines).toBe(true);
+		expect(waitlisted.lines[0]).toMatchObject({ status: 'WAITLISTED', statusReason: 'Weekend full' });
+		expect(waitlisted.lines[0].waitlistedAt).not.toBeNull();
+	});
+
+	it('maps the summary', () => {
+		const summary = fromApiSummary(summaryFixture);
+		expect(summary.stages).toEqual(summaryFixture.stages);
+		expect(summary.oldestAwaitingPayment[0]).toMatchObject({ brandName: 'Wayne Enterprises', daysSinceBilled: 0 });
+	});
+
+	it('maps the vendor label', () => {
+		expect(fromApiVendor(vendorFixture)).toMatchObject({ label: 'active', brandName: 'Acme Corporation' });
+	});
+});
+
+describe('board grouping and days in stage', () => {
+	const applications = pageFixture.results.map(fromApiApplication);
+
+	it('groups every application under its stage, keeping order', () => {
+		const groups = groupByStage(applications);
+		const total = Object.values(groups).reduce((sum, group) => sum + group.length, 0);
+		expect(total).toBe(applications.length);
+		expect(groups.WON.map((a) => a.vendorBrand)).toEqual(['Stark Industries', 'Acme Corporation']);
+		expect(groups.AWAITING_PAYMENT.map((a) => a.vendorBrand)).toEqual(['Wayne Enterprises']);
+		expect(groups.DECLINED).toHaveLength(1);
+		expect(groups.WITHDRAWN).toHaveLength(1);
+	});
+
+	it('counts whole days in stage', () => {
+		const entered = { stageEnteredAt: '2026-10-10T12:00:00Z' };
+		expect(daysInStage(entered, new Date('2026-10-10T23:00:00Z'))).toBe(0);
+		expect(daysInStage(entered, new Date('2026-10-11T12:00:00Z'))).toBe(1);
+		expect(daysInStage(entered, new Date('2026-10-14T11:59:00Z'))).toBe(3);
+		expect(daysInStage(entered, new Date('2026-10-01T00:00:00Z'))).toBe(0);
+		expect(daysInStage({ stageEnteredAt: null })).toBeNull();
+	});
+});
+
+describe('stage actions', () => {
+	const at = (stage: Stage, lines: Pick<ApplicationLine, 'status'>[] = []) =>
+		({ stage, lines }) as unknown as Application;
+	const keys = (stage: Stage, lines: Pick<ApplicationLine, 'status'>[] = []) =>
+		availableStageActions(at(stage, lines), true).map((action) => action.key);
+
+	it('gives team members no stage actions', () => {
+		for (const stage of ['NEW', 'IN_REVIEW', 'AWAITING_PAYMENT', 'WON', 'DECLINED', 'WITHDRAWN'] as Stage[]) {
+			expect(availableStageActions(at(stage), false)).toEqual([]);
+		}
+	});
+
+	it('follows the stage rules for administrators', () => {
+		expect(keys('NEW')).toEqual(['start_review', 'decline', 'withdraw']);
+		expect(keys('IN_REVIEW')).toEqual(['mark_billed', 'decline', 'withdraw']);
+		expect(keys('AWAITING_PAYMENT')).toEqual(['mark_first_payment']);
+		expect(keys('WON')).toEqual([]);
+		expect(keys('DECLINED')).toEqual(['reopen']);
+		expect(keys('WITHDRAWN')).toEqual(['reopen']);
+	});
+
+	it('only enables Mark billed with a confirmed line, and labels billing as interim', () => {
+		const [billed] = availableStageActions(at('IN_REVIEW', [{ status: 'WAITLISTED' }]), true);
+		expect(billed.disabledReason).toMatch(/Confirm at least one line/);
+		const [ready] = availableStageActions(at('IN_REVIEW', [{ status: 'CONFIRMED' }]), true);
+		expect(ready.disabledReason).toBeUndefined();
+		expect(ready.interim).toBe(true);
+		expect(availableStageActions(at('AWAITING_PAYMENT'), true)[0]).toMatchObject({ interim: true, input: 'note' });
+	});
+});
+
+describe('line actions', () => {
+	const keys = (status: LineStatus, isAdmin: boolean, paid = false, context = {}) =>
+		availableLineActions({ status, kind: 'booth' }, isAdmin, paid, context).map((action) => action.key);
+
+	it('lets team members edit and remove only requested lines', () => {
+		expect(keys('REQUESTED', false)).toEqual(['edit', 'delete']);
+		for (const status of ['CONFIRMED', 'WAITLISTED', 'DECLINED', 'CANCELLED'] as LineStatus[]) {
+			expect(keys(status, false)).toEqual([]);
+		}
+	});
+
+	it('gives administrators the decisions the transition map allows', () => {
+		expect(keys('REQUESTED', true)).toEqual(['edit', 'delete', 'confirm', 'waitlist', 'decline']);
+		expect(keys('WAITLISTED', true)).toEqual(['confirm', 'decline']);
+		expect(keys('CONFIRMED', true)).toEqual(['release']);
+		expect(keys('DECLINED', true)).toEqual([]);
+		expect(keys('CANCELLED', true)).toEqual([]);
+	});
+
+	it('requires a reason to release and blocks release after first payment', () => {
+		const [release] = availableLineActions({ status: 'CONFIRMED', kind: 'booth' }, true, false);
+		expect(release).toMatchObject({ key: 'release', reason: 'required' });
+		expect(release.disabledReason).toBeUndefined();
+		const [paid] = availableLineActions({ status: 'CONFIRMED', kind: 'booth' }, true, true);
+		expect(paid.disabledReason).toMatch(/paid/);
+	});
+
+	it('respects the application stage and the parent booth line', () => {
+		expect(keys('REQUESTED', true, false, { stage: 'DECLINED' })).toEqual([]);
+		expect(keys('REQUESTED', false, false, { stage: 'AWAITING_PAYMENT' })).toEqual([]);
+		expect(keys('REQUESTED', true, false, { stage: 'AWAITING_PAYMENT' })).toEqual(['confirm', 'waitlist', 'decline']);
+		const addOn = availableLineActions({ status: 'REQUESTED', kind: 'add_on' }, true, false, { parentStatus: 'REQUESTED' });
+		expect(addOn.find((action) => action.key === 'confirm')?.disabledReason).toMatch(/booth line/);
+	});
+});
+
+describe('totals display', () => {
+	it('uses the server figures and shows the discount row with its label', () => {
+		expect(totalsRows(won)).toEqual([
+			{ key: 'requestedTotalCents', label: 'Requested total', cents: 34000 },
+			{ key: 'confirmedSubtotalCents', label: 'Confirmed subtotal', cents: 34000 },
+			{ key: 'discountCents', label: 'Discount (New Vendor Trial)', cents: 3400, negative: true },
+			{ key: 'confirmedTotalCents', label: 'Confirmed total', cents: 30600, emphasis: true }
+		]);
+		expect(totalsRows(waitlisted).map((row) => row.key)).not.toContain('discountCents');
+	});
+
+	it('describes discounts', () => {
+		expect(describeDiscount(won.discount, formatMoney)).toBe('10% · New Vendor Trial');
+		expect(describeDiscount({ type: 'FIXED', value: '2500.00', label: '' }, formatMoney)).toBe('$25.00 off');
+		expect(describeDiscount({ type: 'NONE', value: '0.00', label: '' }, formatMoney)).toBe('No discount');
+	});
+});
+
+describe('submissions and bundling', () => {
+	it('recognises a bundled response and points at the open application with a notice', () => {
+		const submission = fromApiSubmission(bundledFixture);
+		expect(submission.bundled).toBe(true);
+		const outcome = submissionOutcome(submission);
+		expect(outcome.href).toBe(`/applications/${bundledFixture.id}?bundled=1`);
+		expect(outcome.notice).toMatch(/Moss & Thread already had an open application/);
+	});
+
+	it('treats a new application as not bundled', () => {
+		const outcome = submissionOutcome({ application: won, bundled: false });
+		expect(outcome).toEqual({ href: `/applications/${won.id}`, notice: null });
+	});
+
+	it('posts vendor data, notes and order lines in the API shape', async () => {
+		mockFetch({ status: 200, body: bundledFixture });
+		const result = await createApplication({
+			vendorId: 'v1',
+			notes: '  Also November ',
+			lines: [{ variantId: 'var1', quantity: 2, addOns: [{ addOnId: 'tent', quantity: 1 }] }]
+		});
+		expect(result.bundled).toBe(true);
+		expect(calls[0].url).toBe('/api/v1/applications/');
+		expect(JSON.parse(calls[0].init.body as string)).toEqual({
+			vendor: 'v1',
+			source: 'Staff entry',
+			notes: 'Also November',
+			requested_lines: [{ variant: 'var1', quantity: 2, add_ons: [{ add_on: 'tent', quantity: 1 }] }]
+		});
+	});
+});
+
+describe('line decisions', () => {
+	it('surfaces the capacity refusal with the remaining number', async () => {
+		mockFetch({ status: 400, body: errorsFixture.capacity_refused });
+		const error = await decideLine('l1', 'confirm').catch((e) => e);
+		expect(error).toBeInstanceOf(ApiError);
+		expect(error.message).toBe('Only 0 of 8ft x 8ft left for Oct 10 & 11; this line needs 1. Waitlist it instead.');
+		expect(calls[0].url).toBe('/api/v1/application-lines/l1/confirm/');
+	});
+
+	it('sends the reason for releases and shows a refusal for team members', async () => {
+		mockFetch({ status: 403, body: errorsFixture.member_forbidden });
+		const error = await decideLine('l1', 'release', '  Vendor cancelled ').catch((e) => e);
+		expect(JSON.parse(calls[0].init.body as string)).toEqual({ reason: 'Vendor cancelled' });
+		expect(error.message).toBe('Only administrators can do this.');
+	});
+});

@@ -70,6 +70,16 @@ export const outcomeSuggestions: Partial<Record<CallOutcome, VendorStatus>> = {
 	'Not Qualified': 'declined'
 };
 
+/** Derived by the API (Vendor.label): vendors no longer have a pipeline status in the UI. */
+export type VendorLabel = 'prospect' | 'active' | 'inactive' | 'suspended';
+
+export const vendorLabels: Record<VendorLabel, string> = {
+	prospect: 'Prospect',
+	active: 'Active',
+	inactive: 'Inactive',
+	suspended: 'Suspended'
+};
+
 // --- Types ----------------------------------------------------------------------
 
 export type UserSummary = { id: string; username: string; name: string; role: string };
@@ -100,6 +110,7 @@ export type Vendor = {
 	createdAt: string;
 	updatedAt: string;
 	status: VendorStatus;
+	label: VendorLabel;
 	journeyStage: string;
 	qualificationStatus: string;
 	applicationStatusSummary: string;
@@ -280,9 +291,9 @@ export const normaliseInstagram = (handle: string) => handle.replace(/[@\s]/g, '
 
 // --- API <-> UI mapping -----------------------------------------------------------
 
-type Json = Record<string, any>;
+export type Json = Record<string, any>;
 
-const user = (raw: Json | null | undefined): UserSummary | null =>
+export const user = (raw: Json | null | undefined): UserSummary | null =>
 	raw ? { id: raw.id, username: raw.username, name: raw.name, role: raw.role } : null;
 
 export function fromApiCallDetails(raw: Json | null | undefined): CallDetails {
@@ -315,6 +326,7 @@ export function fromApiVendor(raw: Json): Vendor {
 		createdAt: raw.created_at,
 		updatedAt: raw.updated_at,
 		status: raw.status,
+		label: raw.label,
 		journeyStage: raw.journey_stage,
 		qualificationStatus: raw.qualification_status,
 		applicationStatusSummary: raw.application_status_summary ?? '',
@@ -381,7 +393,7 @@ export function toApiVendor(input: Partial<VendorInput>): Json {
 	return body;
 }
 
-const vendorSummary = (raw: Json): VendorSummary => ({
+export const vendorSummary = (raw: Json): VendorSummary => ({
 	id: raw.id,
 	brandName: raw.brand_name,
 	firstName: raw.first_name ?? '',
@@ -457,7 +469,7 @@ const fromApiNote = (raw: Json): InternalNote => ({
 	createdAt: raw.created_at
 });
 
-const mapPage = <T>(page: Page<Json>, map: (raw: Json) => T): Page<T> => ({ ...page, results: page.results.map(map) });
+export const mapPage = <T>(page: Page<Json>, map: (raw: Json) => T): Page<T> => ({ ...page, results: page.results.map(map) });
 
 function fromApiDuplicates(raw: Json): DuplicateResult {
 	return {
@@ -480,7 +492,7 @@ export class DuplicateVendorError extends Error {
 	}
 }
 
-function rethrowDuplicate(error: unknown): never {
+export function rethrowDuplicate(error: unknown): never {
 	if (error instanceof ApiError && error.status === 409 && error.body) {
 		throw new DuplicateVendorError(fromApiDuplicates(error.body), error.body.code as 'possible_duplicate');
 	}

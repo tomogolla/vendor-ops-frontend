@@ -1,0 +1,18 @@
+{
+	"stages": {
+		"NEW": 1,
+		"IN_REVIEW": 4,
+		"AWAITING_PAYMENT": 1,
+		"WON": 2,
+		"DECLINED": 1,
+		"WITHDRAWN": 1
+	},
+	"oldest_awaiting_payment": [
+		{
+			"id": "b08807db-bb16-4bd1-8892-67e0d2fad55e",
+			"brand_name": "Wayne Enterprises",
+			"billed_at": "2026-10-14T19:29:13.046205Z",
+			"days_since_billed": 0
+		}
+	]
+}

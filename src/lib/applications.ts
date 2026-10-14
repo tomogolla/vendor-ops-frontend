@@ -1,0 +1,505 @@
+// API client and pure rules for applications (v1.3 pipeline): an application is an order made of
+// lines, and it carries the pipeline stage. Field names follow the Django serializers; money is
+// integer cents and totals are always the server's, never recomputed here.
+import { request, type Page, type Query } from '#lib/api.ts';
+import {
+	mapPage,
+	rethrowDuplicate,
+	toApiVendor,
+	user,
+	type Json,
+	type UserSummary,
+	type VendorInput,
+	type VendorLabel
+} from '#lib/vendor-store.ts';
+
+// --- Stages ---------------------------------------------------------------------------
+
+export type Stage = 'NEW' | 'IN_REVIEW' | 'AWAITING_PAYMENT' | 'WON' | 'DECLINED' | 'WITHDRAWN';
+
+export const stageLabels: Record<Stage, string> = {
+	NEW: 'New',
+	IN_REVIEW: 'In review',
+	AWAITING_PAYMENT: 'Awaiting payment',
+	WON: 'Won',
+	DECLINED: 'Declined',
+	WITHDRAWN: 'Withdrawn'
+};
+
+/** Board columns, in pipeline order. */
+export const BOARD_STAGES: readonly Stage[] = ['NEW', 'IN_REVIEW', 'AWAITING_PAYMENT', 'WON'];
+// TODO(decision): declined cards. Declined and withdrawn are provisional terminal stages, shown in a
+// collapsed Closed section until the product decision on declined cards is made.
+export const CLOSED_STAGES: readonly Stage[] = ['DECLINED', 'WITHDRAWN'];
+export const ALL_STAGES: readonly Stage[] = [...BOARD_STAGES, ...CLOSED_STAGES];
+
+/** Stages in which lines can be added or edited (mirrors LINE_EDIT_STAGES in the backend). */
+const LINE_EDIT_STAGES: readonly Stage[] = ['NEW', 'IN_REVIEW', 'WON'];
+
+// --- Lines ------------------------------------------------------------------------------
+
+export type LineStatus = 'REQUESTED' | 'CONFIRMED' | 'WAITLISTED' | 'DECLINED' | 'CANCELLED';
+
+export const lineStatusLabels: Record<LineStatus, string> = {
+	REQUESTED: 'Requested',
+	CONFIRMED: 'Confirmed',
+	WAITLISTED: 'Waitlisted',
+	DECLINED: 'Declined',
+	CANCELLED: 'Cancelled'
+};
+
+export const OPEN_LINE_STATUSES: readonly LineStatus[] = ['REQUESTED', 'WAITLISTED', 'CONFIRMED'];
+
+export type WeekendRef = { id: string; label: string; startDate: string };
+
+export type ApplicationLine = {
+	id: string;
+	applicationId: string;
+	kind: 'booth' | 'add_on';
+	variantId: string | null;
+	addOnId: string | null;
+	parentLineId: string | null;
+	productName: string;
+	weekend: WeekendRef;
+	quantity: number;
+	unitPriceCents: number;
+	totalCents: number;
+	status: LineStatus;
+	statusReason: string;
+	waitlistedAt: string | null;
+	confirmedAt: string | null;
+	closedAt: string | null;
+	createdAt: string;
+};
+
+// --- Applications ---------------------------------------------------------------------
+
+export type DiscountType = 'NONE' | 'PERCENT' | 'FIXED';
+
+export type Discount = {
+	type: DiscountType;
+	/** Decimal string from the API: a percent (0-100) for PERCENT, whole cents for FIXED. */
+	value: string;
+	label: string;
+};
+
+export type Totals = {
+	currency: string;
+	requestedTotalCents: number;
+	confirmedSubtotalCents: number;
+	discountCents: number;
+	confirmedTotalCents: number;
+};
+
+export type ApplicationVendor = {
+	id: string;
+	brandName: string;
+	firstName: string;
+	lastName: string;
+	email: string;
+	phone: string;
+	instagram: string;
+};
+
+export type Application = {
+	id: string;
+	vendorId: string;
+	vendorBrand: string;
+	vendorLabel: VendorLabel;
+	vendor: ApplicationVendor;
+	submittedBy: UserSummary | null;
+	source: string;
+	submittedAt: string;
+	stage: Stage;
+	stageEnteredAt: string | null;
+	hasWaitlistedLines: boolean;
+	callExhausted: boolean;
+	callAttempts: number;
+	nextTaskDueAt: string | null;
+	reviewerId: string | null;
+	category: string;
+	productDescription: string;
+	lines: ApplicationLine[];
+	discount: Discount;
+	billedAt: string | null;
+	firstPaidAt: string | null;
+	totals: Totals;
+	updatedAt: string;
+};
+
+export type ApplicationSummary = {
+	stages: Record<Stage, number>;
+	oldestAwaitingPayment: { id: string; brandName: string; billedAt: string | null; daysSinceBilled: number | null }[];
+};
+
+// --- API -> UI mapping ------------------------------------------------------------------
+
+export function fromApiLine(raw: Json): ApplicationLine {
+	return {
+		id: raw.id,
+		applicationId: raw.application,
+		kind: raw.kind,
+		variantId: raw.variant ?? null,
+		addOnId: raw.add_on ?? null,
+		parentLineId: raw.parent_line ?? null,
+		productName: raw.product_name ?? '',
+		weekend: { id: raw.weekend.id, label: raw.weekend.label, startDate: raw.weekend.start_date },
+		quantity: raw.quantity,
+		unitPriceCents: raw.unit_price_cents,
+		totalCents: raw.total_cents,
+		status: raw.status,
+		statusReason: raw.status_reason ?? '',
+		waitlistedAt: raw.waitlisted_at ?? null,
+		confirmedAt: raw.confirmed_at ?? null,
+		closedAt: raw.closed_at ?? null,
+		createdAt: raw.created_at
+	};
+}
+
+export function fromApiApplication(raw: Json): Application {
+	const vendor = raw.vendor_detail ?? {};
+	return {
+		id: raw.id,
+		vendorId: raw.vendor,
+		vendorBrand: raw.vendor_brand ?? vendor.brand_name ?? '',
+		vendorLabel: raw.vendor_label,
+		vendor: {
+			id: vendor.id ?? raw.vendor,
+			brandName: vendor.brand_name ?? raw.vendor_brand ?? '',
+			firstName: vendor.first_name ?? '',
+			lastName: vendor.last_name ?? '',
+			email: vendor.email ?? '',
+			phone: vendor.phone ?? '',
+			instagram: vendor.instagram ?? ''
+		},
+		submittedBy: user(raw.submitted_by),
+		source: raw.source ?? '',
+		submittedAt: raw.submitted_at,
+		stage: raw.stage,
+		stageEnteredAt: raw.stage_entered_at ?? null,
+		hasWaitlistedLines: Boolean(raw.has_waitlisted_lines),
+		callExhausted: Boolean(raw.call_exhausted),
+		callAttempts: raw.call_attempts ?? 0,
+		nextTaskDueAt: raw.next_task_due_at ?? null,
+		reviewerId: raw.reviewer ?? null,
+		category: raw.category ?? '',
+		productDescription: raw.product_description ?? '',
+		lines: (raw.lines ?? []).map(fromApiLine),
+		discount: { type: raw.discount_type ?? 'NONE', value: raw.discount_value ?? '0.00', label: raw.discount_label ?? '' },
+		billedAt: raw.billed_at ?? null,
+		firstPaidAt: raw.first_paid_at ?? null,
+		totals: {
+			currency: raw.currency ?? 'USD',
+			requestedTotalCents: raw.requested_total_cents ?? 0,
+			confirmedSubtotalCents: raw.confirmed_subtotal_cents ?? 0,
+			discountCents: raw.discount_cents ?? 0,
+			confirmedTotalCents: raw.confirmed_total_cents ?? 0
+		},
+		updatedAt: raw.updated_at
+	};
+}
+
+export function fromApiSummary(raw: Json): ApplicationSummary {
+	const stages = Object.fromEntries(ALL_STAGES.map((stage) => [stage, raw.stages?.[stage] ?? 0])) as Record<Stage, number>;
+	return {
+		stages,
+		oldestAwaitingPayment: (raw.oldest_awaiting_payment ?? []).map((item: Json) => ({
+			id: item.id,
+			brandName: item.brand_name,
+			billedAt: item.billed_at ?? null,
+			daysSinceBilled: item.days_since_billed ?? null
+		}))
+	};
+}
+
+// --- API calls --------------------------------------------------------------------------
+
+export async function listApplications(query: Query = {}): Promise<Page<Application>> {
+	return mapPage(await request<Page<Json>>('/applications/', { query }), fromApiApplication);
+}
+
+export async function countApplications(query: Query = {}): Promise<number> {
+	return (await request<Page<Json>>('/applications/', { query: { ...query, page_size: 1 } })).count;
+}
+
+export async function getApplication(id: string): Promise<Application> {
+	return fromApiApplication(await request<Json>(`/applications/${id}/`));
+}
+
+export async function getSummary(query: Query = {}): Promise<ApplicationSummary> {
+	return fromApiSummary(await request<Json>('/applications/summary/', { query }));
+}
+
+/** A booth requested with a new application, with optional add-ons attached to that booth. */
+export type OrderLineInput = { variantId: string; quantity: number; addOns: { addOnId: string; quantity: number }[] };
+
+export function toApiOrderLines(lines: OrderLineInput[]): Json[] {
+	return lines.map((line) => ({
+		variant: line.variantId,
+		quantity: line.quantity,
+		add_ons: line.addOns.map((addOn) => ({ add_on: addOn.addOnId, quantity: addOn.quantity }))
+	}));
+}
+
+export type Submission = { application: Application; bundled: boolean };
+
+/** Every entry starts at New with an automatic call task. If the vendor already has an application
+ * at New or In review, the backend adds the lines and notes to it instead (200, bundled: true). */
+export async function createApplication(args: {
+	vendorId?: string;
+	vendor?: VendorInput;
+	source?: string;
+	notes?: string;
+	lines?: OrderLineInput[];
+}): Promise<Submission> {
+	try {
+		const raw = await request<Json>('/applications/', {
+			method: 'POST',
+			json: {
+				vendor: args.vendorId,
+				vendor_data: args.vendor ? toApiVendor(args.vendor) : undefined,
+				source: args.source || 'Staff entry',
+				notes: args.notes?.trim() || undefined,
+				requested_lines: args.lines?.length ? toApiOrderLines(args.lines) : undefined
+			}
+		});
+		return fromApiSubmission(raw);
+	} catch (error) {
+		rethrowDuplicate(error);
+	}
+}
+
+export const fromApiSubmission = (raw: Json): Submission => ({
+	application: fromApiApplication(raw),
+	bundled: raw.bundled === true
+});
+
+/** Where to go after a submission, and the notice to show there. */
+export function submissionOutcome({ application, bundled }: Submission): { href: string; notice: string | null } {
+	return {
+		href: `/applications/${application.id}${bundled ? '?bundled=1' : ''}`,
+		notice: bundled ? bundledNotice(application.vendorBrand) : null
+	};
+}
+
+export const bundledNotice = (brand: string) =>
+	`${brand || 'This vendor'} already had an open application, so this submission was added to it instead of starting a new one.`;
+
+export async function changeStage(id: string, stage: Stage, reason = ''): Promise<Application> {
+	return fromApiApplication(
+		await request<Json>(`/applications/${id}/stage/`, { method: 'POST', json: { stage, reason: reason.trim() } })
+	);
+}
+
+export async function setDiscount(id: string, discount: Discount): Promise<Application> {
+	return fromApiApplication(
+		await request<Json>(`/applications/${id}/`, {
+			method: 'PATCH',
+			json: { discount_type: discount.type, discount_value: discount.value, discount_label: discount.label.trim() }
+		})
+	);
+}
+
+// TODO(invoicing): interim placeholders until invoices, Stripe and Shopify replace them.
+export async function markBilled(id: string): Promise<Application> {
+	return fromApiApplication(await request<Json>(`/applications/${id}/mark-billed/`, { method: 'POST', json: {} }));
+}
+
+export async function markFirstPayment(id: string, note = ''): Promise<Application> {
+	return fromApiApplication(
+		await request<Json>(`/applications/${id}/mark-first-payment/`, { method: 'POST', json: { note: note.trim() } })
+	);
+}
+
+export async function listLines(applicationId: string): Promise<ApplicationLine[]> {
+	return (await request<Json[]>(`/applications/${applicationId}/lines/`)).map(fromApiLine);
+}
+
+export async function addLine(
+	applicationId: string,
+	line: { variantId?: string; addOnId?: string; parentLineId?: string; quantity: number }
+): Promise<ApplicationLine> {
+	const raw = await request<Json>(`/applications/${applicationId}/lines/`, {
+		method: 'POST',
+		json: { variant: line.variantId, add_on: line.addOnId, parent_line: line.parentLineId, quantity: line.quantity }
+	});
+	return fromApiLine(raw);
+}
+
+export async function updateLineQuantity(lineId: string, quantity: number): Promise<ApplicationLine> {
+	return fromApiLine(await request<Json>(`/application-lines/${lineId}/`, { method: 'PATCH', json: { quantity } }));
+}
+
+export async function deleteLine(lineId: string): Promise<void> {
+	await request(`/application-lines/${lineId}/`, { method: 'DELETE' });
+}
+
+export type LineDecision = 'confirm' | 'waitlist' | 'decline' | 'release';
+
+export async function decideLine(lineId: string, decision: LineDecision, reason = ''): Promise<ApplicationLine> {
+	const json = decision === 'confirm' ? {} : { reason: reason.trim() };
+	return fromApiLine(await request<Json>(`/application-lines/${lineId}/${decision}/`, { method: 'POST', json }));
+}
+
+// --- Pure helpers --------------------------------------------------------------------------
+
+export function groupByStage(applications: readonly Application[]): Record<Stage, Application[]> {
+	const groups = Object.fromEntries(ALL_STAGES.map((stage) => [stage, [] as Application[]])) as Record<Stage, Application[]>;
+	for (const application of applications) groups[application.stage]?.push(application);
+	return groups;
+}
+
+const DAY = 24 * 60 * 60 * 1000;
+
+/** Whole days since the application entered its stage, or null when unknown. */
+export function daysInStage(application: Pick<Application, 'stageEnteredAt'>, now: Date = new Date()): number | null {
+	if (!application.stageEnteredAt) return null;
+	const entered = new Date(application.stageEnteredAt).getTime();
+	if (Number.isNaN(entered)) return null;
+	return Math.max(0, Math.floor((now.getTime() - entered) / DAY));
+}
+
+export const isIncompleteApplication = (application: Pick<Application, 'category'>) => !application.category;
+
+export type StageActionKey = 'start_review' | 'decline' | 'withdraw' | 'reopen' | 'mark_billed' | 'mark_first_payment';
+
+export type StageAction = {
+	key: StageActionKey;
+	label: string;
+	tone: string;
+	/** Whether the confirmation dialog asks for a reason or note. */
+	input: 'none' | 'reason' | 'note';
+	/** Interim actions are replaced by real invoices in the next release. TODO(invoicing) */
+	interim?: boolean;
+	disabledReason?: string;
+};
+
+const stageActionDefs: Record<StageActionKey, StageAction> = {
+	start_review: { key: 'start_review', label: 'Start review', tone: 'btn-primary', input: 'none' },
+	decline: { key: 'decline', label: 'Decline', tone: 'btn-error btn-outline', input: 'reason' },
+	withdraw: { key: 'withdraw', label: 'Withdraw', tone: 'btn-outline', input: 'reason' },
+	reopen: { key: 'reopen', label: 'Reopen', tone: 'btn-outline', input: 'reason' },
+	mark_billed: { key: 'mark_billed', label: 'Mark billed', tone: 'btn-primary', input: 'none', interim: true },
+	mark_first_payment: {
+		key: 'mark_first_payment',
+		label: 'Mark first payment received',
+		tone: 'btn-primary',
+		input: 'note',
+		interim: true
+	}
+};
+
+/** Stage actions an administrator can take; team members get none (calls move New to In review). */
+export function availableStageActions(
+	application: Pick<Application, 'stage' | 'lines'>,
+	isAdmin: boolean
+): StageAction[] {
+	if (!isAdmin) return [];
+	const pick = (...keys: StageActionKey[]) => keys.map((key) => ({ ...stageActionDefs[key] }));
+	switch (application.stage) {
+		case 'NEW':
+			return pick('start_review', 'decline', 'withdraw');
+		case 'IN_REVIEW': {
+			const [billed, ...rest] = pick('mark_billed', 'decline', 'withdraw');
+			if (!application.lines.some((line) => line.status === 'CONFIRMED')) {
+				billed.disabledReason = 'Confirm at least one line before billing.';
+			}
+			return [billed, ...rest];
+		}
+		case 'AWAITING_PAYMENT':
+			return pick('mark_first_payment');
+		case 'DECLINED':
+		case 'WITHDRAWN':
+			return pick('reopen');
+		default:
+			return [];
+	}
+}
+
+/** The stage an action moves to through POST /applications/{id}/stage/ (billing actions use their own endpoints). */
+export const stageActionTarget: Partial<Record<StageActionKey, Stage>> = {
+	start_review: 'IN_REVIEW',
+	decline: 'DECLINED',
+	withdraw: 'WITHDRAWN',
+	reopen: 'IN_REVIEW'
+};
+
+export type LineActionKey = 'edit' | 'delete' | LineDecision;
+
+export type LineAction = {
+	key: LineActionKey;
+	label: string;
+	tone: string;
+	reason: 'none' | 'optional' | 'required';
+	disabledReason?: string;
+};
+
+/** What the current person can do to a line. `context` narrows by application stage and, for
+ * add-on lines, by the status of the parent booth line. The API enforces the same rules. */
+export function availableLineActions(
+	line: Pick<ApplicationLine, 'status' | 'kind'>,
+	isAdmin: boolean,
+	applicationFirstPaid: boolean,
+	context: { stage?: Stage; parentStatus?: LineStatus } = {}
+): LineAction[] {
+	const actions: LineAction[] = [];
+	const editable = !context.stage || LINE_EDIT_STAGES.includes(context.stage);
+	if (line.status === 'REQUESTED' && editable) {
+		actions.push({ key: 'edit', label: 'Change quantity', tone: 'btn-ghost', reason: 'none' });
+		actions.push({ key: 'delete', label: 'Remove', tone: 'btn-ghost text-error', reason: 'none' });
+	}
+	const closed = context.stage !== undefined && CLOSED_STAGES.includes(context.stage);
+	if (!isAdmin || closed) return actions;
+
+	if (line.status === 'REQUESTED' || line.status === 'WAITLISTED') {
+		const confirm: LineAction = { key: 'confirm', label: 'Confirm', tone: 'btn-primary', reason: 'none' };
+		if (line.kind === 'add_on' && context.parentStatus && context.parentStatus !== 'CONFIRMED') {
+			confirm.disabledReason = 'Confirm the booth line before its add-ons.';
+		}
+		actions.push(confirm);
+	}
+	if (line.status === 'REQUESTED') {
+		actions.push({ key: 'waitlist', label: 'Waitlist', tone: 'btn-outline', reason: 'optional' });
+	}
+	if (line.status === 'REQUESTED' || line.status === 'WAITLISTED') {
+		actions.push({ key: 'decline', label: 'Decline', tone: 'btn-error btn-outline', reason: 'optional' });
+	}
+	if (line.status === 'CONFIRMED') {
+		const release: LineAction = { key: 'release', label: 'Release hold', tone: 'btn-error btn-outline', reason: 'required' };
+		if (applicationFirstPaid) {
+			release.disabledReason = 'This application has been paid; releasing would need a refund, which is not designed yet.';
+		}
+		actions.push(release);
+	}
+	return actions;
+}
+
+/** The order discount in words, e.g. "10% · New Vendor Trial" or "$25.00 off". */
+export function describeDiscount(discount: Discount, formatCents: (cents: number) => string): string {
+	if (discount.type === 'NONE') return 'No discount';
+	const amount =
+		discount.type === 'PERCENT' ? `${Number(discount.value)}%` : `${formatCents(Math.round(Number(discount.value)))} off`;
+	return discount.label ? `${amount} · ${discount.label}` : amount;
+}
+
+export type TotalsRow = { key: keyof Omit<Totals, 'currency'>; label: string; cents: number; emphasis?: boolean; negative?: boolean };
+
+/** Rows for the totals panel, straight from the server's figures. The discount row only shows
+ * when there is a discount. */
+export function totalsRows(application: Pick<Application, 'totals' | 'discount'>): TotalsRow[] {
+	const { totals, discount } = application;
+	const rows: TotalsRow[] = [
+		{ key: 'requestedTotalCents', label: 'Requested total', cents: totals.requestedTotalCents },
+		{ key: 'confirmedSubtotalCents', label: 'Confirmed subtotal', cents: totals.confirmedSubtotalCents }
+	];
+	if (discount.type !== 'NONE' || totals.discountCents) {
+		rows.push({
+			key: 'discountCents',
+			label: discount.label ? `Discount (${discount.label})` : 'Discount',
+			cents: totals.discountCents,
+			negative: true
+		});
+	}
+	rows.push({ key: 'confirmedTotalCents', label: 'Confirmed total', cents: totals.confirmedTotalCents, emphasis: true });
+	return rows;
+}

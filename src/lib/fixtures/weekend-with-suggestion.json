@@ -1,0 +1,66 @@
+{
+	"id": "f26cc1ce-545f-4ad0-910e-26753372f59c",
+	"label": "Oct 10 & 11",
+	"start_date": "2026-10-10",
+	"end_date": "2026-10-11",
+	"venue": "Main lot",
+	"status": "OPEN",
+	"currency": "USD",
+	"variants": [
+		{
+			"id": "180b5eac-5162-4f69-9617-11c50d4b486e",
+			"weekend": "f26cc1ce-545f-4ad0-910e-26753372f59c",
+			"name": "8ft x 8ft",
+			"dimensions": "8 x 8 ft",
+			"price_cents": 15000,
+			"capacity": 3,
+			"confirmed": 2,
+			"remaining": 1,
+			"waitlisted": 1,
+			"promotion_suggestions": [
+				{
+					"line_id": "e457726e-8477-469a-b083-1b16ce99f633",
+					"application_id": "c5bb7815-0f5c-4a07-9815-0d60bb60713d",
+					"vendor_id": "380608fc-5d27-4440-991a-590ca6084f3d",
+					"brand_name": "Second Spin Records",
+					"quantity": 1,
+					"waitlisted_at": "2026-10-14T19:29:13.214717Z",
+					"fits": true
+				}
+			],
+			"created_at": "2026-10-14T19:29:12.558309Z",
+			"updated_at": "2026-10-14T19:30:08.285721Z"
+		},
+		{
+			"id": "bd09115b-3563-4058-8117-ac5c639f9998",
+			"weekend": "f26cc1ce-545f-4ad0-910e-26753372f59c",
+			"name": "10ft x 10ft",
+			"dimensions": "10 x 10 ft",
+			"price_cents": 22500,
+			"capacity": 4,
+			"confirmed": 1,
+			"remaining": 3,
+			"waitlisted": 0,
+			"promotion_suggestions": [],
+			"created_at": "2026-10-14T19:29:12.562365Z",
+			"updated_at": "2026-10-14T19:29:12.562379Z"
+		}
+	],
+	"add_ons": [
+		{
+			"id": "08bd1263-0004-4056-924a-0e79d9c137f5",
+			"weekend": "f26cc1ce-545f-4ad0-910e-26753372f59c",
+			"name": "Tent rental",
+			"price_cents": 4000,
+			"capacity": 3,
+			"confirmed": 1,
+			"remaining": 2,
+			"waitlisted": 0,
+			"promotion_suggestions": [],
+			"created_at": "2026-10-14T19:29:12.565641Z",
+			"updated_at": "2026-10-14T19:29:12.565654Z"
+		}
+	],
+	"created_at": "2026-10-14T19:29:12.552395Z",
+	"updated_at": "2026-10-14T19:29:12.552409Z"
+}
