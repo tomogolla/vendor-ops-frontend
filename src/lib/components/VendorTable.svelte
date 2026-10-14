@@ -50,6 +50,7 @@
 						{:else}—{/if}
 					</td>
 					<td>{vendor.leadSource || '—'}</td>
+					
 					<td>
 						<div class="flex flex-wrap gap-1">
 							{#each vendor.tags as tag (tag)}

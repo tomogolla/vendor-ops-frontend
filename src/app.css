@@ -38,7 +38,6 @@
 }
 
 
-
 :root {
   --brand-color: #35b2b2;
   --brand-color-dark: #258b8b;
@@ -74,8 +73,7 @@ body {
 
 .bg-brand {
   background-color: var(--brand-color);
-}
-/* Borderless, underline-only field used on the vendor/lead forms. */
+} 
 .input-line {
   width: 100%;
   background: transparent;
@@ -102,4 +100,4 @@ select.input-line {
 }
 textarea.input-line {
   resize: vertical;
-}
+} 
