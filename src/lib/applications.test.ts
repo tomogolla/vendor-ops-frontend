@@ -3,6 +3,7 @@ import { ApiError } from '#lib/api.ts';
 import {
 	availableLineActions,
 	availableStageActions,
+	bookingsByWeekend,
 	createApplication,
 	daysInStage,
 	decideLine,
@@ -128,6 +129,14 @@ describe('board grouping and days in stage', () => {
 		expect(groups.AWAITING_PAYMENT.map((a) => a.vendorBrand)).toEqual(['Wayne Enterprises']);
 		expect(groups.DECLINED).toHaveLength(1);
 		expect(groups.WITHDRAWN).toHaveLength(1);
+	});
+
+	it('groups confirmed lines into bookings by weekend', () => {
+		const groups = bookingsByWeekend(applications);
+		expect(groups.map((group) => group.weekend.label)).toEqual(['Oct 10 & 11', 'Oct 17 & 18']);
+		const oct10 = groups[0].bookings.map((booking) => `${booking.line.productName} ${booking.application.stage}`);
+		expect(oct10).toEqual(expect.arrayContaining(['10ft x 10ft AWAITING_PAYMENT', '8ft x 8ft WON', 'Tent rental WON']));
+		expect(groups.flatMap((group) => group.bookings).every((booking) => booking.line.status === 'CONFIRMED')).toBe(true);
 	});
 
 	it('counts whole days in stage', () => {

@@ -13,7 +13,9 @@ import {
 
 export { MAX_CALL_ATTEMPTS };
 
-// --- Status model (display status derived by the API) ------------------------
+// --- Deprecated display status ----------------------------------------------------
+// Vendors no longer have a pipeline status in the UI (the stage lives on the application). The API
+// still derives this field; it is kept for the validation rules and the legacy suspend/reinstate call.
 
 export type VendorStatus =
 	| 'lead'
@@ -24,16 +26,6 @@ export type VendorStatus =
 	| 'declined'
 	| 'suspended';
 
-export const vendorStatuses: readonly VendorStatus[] = [
-	'lead',
-	'applied',
-	'in_review',
-	'waitlisted',
-	'approved',
-	'declined',
-	'suspended'
-];
-
 export const statusLabels: Record<VendorStatus, string> = {
 	lead: 'Lead',
 	applied: 'Applied',
@@ -42,32 +34,6 @@ export const statusLabels: Record<VendorStatus, string> = {
 	approved: 'Approved',
 	declined: 'Declined',
 	suspended: 'Suspended'
-};
-
-/** Mirrors DISPLAY_TRANSITIONS in the backend, which is the authority. */
-export const statusTransitions: Record<VendorStatus, readonly VendorStatus[]> = {
-	lead: ['applied', 'in_review', 'declined'],
-	applied: ['in_review', 'declined'],
-	in_review: ['approved', 'waitlisted', 'declined'],
-	waitlisted: ['in_review', 'approved', 'declined'],
-	approved: ['suspended'],
-	suspended: ['approved'],
-	declined: ['in_review']
-};
-
-export function canTransition(from: VendorStatus, to: VendorStatus): boolean {
-	return statusTransitions[from].includes(to);
-}
-
-/** Team members may only turn a lead into an application; everything else is admin-only. */
-export function canChangeStatus(isAdmin: boolean, from: VendorStatus, to: VendorStatus): boolean {
-	return canTransition(from, to) && (isAdmin || (from === 'lead' && to === 'applied'));
-}
-
-/** Status a call outcome suggests; the profile offers it, it is never applied automatically. */
-export const outcomeSuggestions: Partial<Record<CallOutcome, VendorStatus>> = {
-	Interested: 'applied',
-	'Not Qualified': 'declined'
 };
 
 /** Derived by the API (Vendor.label): vendors no longer have a pipeline status in the UI. */

@@ -481,7 +481,23 @@ export function linesInOrder(lines: readonly ApplicationLine[]): { line: Applica
 	return rows;
 }
 
-export const isIncompleteApplication =(application: Pick<Application, 'category'>) => !application.category;
+export type Booking = { line: ApplicationLine; application: Pick<Application, 'id' | 'stage'> };
+
+/** Confirmed lines across a vendor's applications, grouped by weekend in date order. */
+export function bookingsByWeekend(applications: readonly Application[]): { weekend: WeekendRef; bookings: Booking[] }[] {
+	const groups = new Map<string, { weekend: WeekendRef; bookings: Booking[] }>();
+	for (const application of applications) {
+		for (const line of application.lines) {
+			if (line.status !== 'CONFIRMED') continue;
+			const group = groups.get(line.weekend.id) ?? { weekend: line.weekend, bookings: [] };
+			group.bookings.push({ line, application: { id: application.id, stage: application.stage } });
+			groups.set(line.weekend.id, group);
+		}
+	}
+	return [...groups.values()].sort((a, b) => a.weekend.startDate.localeCompare(b.weekend.startDate));
+}
+
+export const isIncompleteApplication = (application: Pick<Application, 'category'>) => !application.category;
 
 export type StageActionKey = 'start_review' | 'decline' | 'withdraw' | 'reopen' | 'mark_billed' | 'mark_first_payment';
 

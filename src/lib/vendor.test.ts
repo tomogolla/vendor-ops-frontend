@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, request, setUnauthorizedHandler, withQuery } from '#lib/api.ts';
 import {
-	canChangeStatus,
 	createLead,
 	DuplicateVendorError,
 	emptyCallInput,
@@ -9,9 +8,7 @@ import {
 	fromApiVendor,
 	logCall,
 	setStatus,
-	statusTransitions,
 	toApiVendor,
-	vendorStatuses,
 	type VendorInput,
 	type VendorStatus
 } from '#lib/vendor-store.ts';
@@ -82,25 +79,15 @@ const apiVendor = {
 	}
 };
 
-describe('status rules', () => {
-	it('matches the backend transition map', () => {
-		expect(statusTransitions).toEqual({
-			lead: ['applied', 'in_review', 'declined'],
-			applied: ['in_review', 'declined'],
-			in_review: ['approved', 'waitlisted', 'declined'],
-			waitlisted: ['in_review', 'approved', 'declined'],
-			approved: ['suspended'],
-			suspended: ['approved'],
-			declined: ['in_review']
-		});
-	});
-
-	it('lets team members only turn leads into applications', () => {
-		expect(canChangeStatus(false, 'lead', 'applied')).toBe(true);
-		expect(canChangeStatus(false, 'lead', 'declined')).toBe(false);
-		expect(canChangeStatus(false, 'in_review', 'approved')).toBe(false);
-		expect(canChangeStatus(true, 'in_review', 'approved')).toBe(true);
-		for (const status of vendorStatuses) expect(canChangeStatus(true, status, status)).toBe(false);
+// Changed in v1.3: the vendor-level status machine (statusTransitions, canChangeStatus) is gone; the
+// pipeline stage lives on the application. Vendor status is only used for suspend and reinstate.
+describe('vendor account status', () => {
+	it('suspends and reinstates through the legacy status endpoint', async () => {
+		mockFetch({ status: 200, body: { ...apiVendor, status: 'suspended', label: 'suspended' } });
+		const result = await setStatus('v1', 'suspended', '  Late payments ');
+		expect(calls[0].url).toBe('/api/v1/vendors/v1/status/');
+		expect(JSON.parse(calls[0].init.body as string)).toEqual({ status: 'suspended', note: 'Late payments' });
+		expect(result).toMatchObject({ ok: true, vendor: { label: 'suspended' } });
 	});
 });
 
