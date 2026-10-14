@@ -225,6 +225,8 @@ export type Task = {
 
 export type ActivityEvent = {
 	id: string;
+	/** The application the event belongs to, when it belongs to one. */
+	applicationId: string | null;
 	eventType: string;
 	description: string;
 	actor: UserSummary | null;
@@ -452,8 +454,9 @@ export function fromApiTask(raw: Json): Task {
 	};
 }
 
-const fromApiActivity = (raw: Json): ActivityEvent => ({
+export const fromApiActivity = (raw: Json): ActivityEvent => ({
 	id: raw.id,
+	applicationId: raw.application ?? null,
 	eventType: raw.event_type,
 	description: raw.description,
 	actor: user(raw.actor),

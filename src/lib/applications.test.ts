@@ -15,6 +15,7 @@ import {
 	fromApiSubmission,
 	fromApiSummary,
 	groupByStage,
+	linesInOrder,
 	orderLinesFromDrafts,
 	submissionOutcome,
 	totalsRows,
@@ -89,6 +90,14 @@ describe('application mapping (captured payloads)', () => {
 			weekend: { label: 'Oct 10 & 11', startDate: '2026-10-10' }
 		});
 		expect(tent).toMatchObject({ kind: 'add_on', productName: 'Tent rental', parentLineId: booth.id, variantId: null });
+	});
+
+	it('lists each booth line followed by its add-ons', () => {
+		const [tent, booth] = [won.lines[1], won.lines[0]];
+		expect(linesInOrder([tent, booth]).map((row) => [row.line.productName, row.parent?.id ?? null])).toEqual([
+			['8ft x 8ft', null],
+			['Tent rental', booth.id]
+		]);
 	});
 
 	it('maps waitlisted lines and the flag', () => {

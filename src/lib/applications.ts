@@ -469,7 +469,19 @@ export function daysInStage(application: Pick<Application, 'stageEnteredAt'>, no
 	return Math.max(0, Math.floor((now.getTime() - entered) / DAY));
 }
 
-export const isIncompleteApplication = (application: Pick<Application, 'category'>) => !application.category;
+/** Booth lines in order, each followed by its add-on lines (orphans last). */
+export function linesInOrder(lines: readonly ApplicationLine[]): { line: ApplicationLine; parent: ApplicationLine | null }[] {
+	const booths = lines.filter((line) => !line.parentLineId);
+	const rows: { line: ApplicationLine; parent: ApplicationLine | null }[] = [];
+	for (const booth of booths) {
+		rows.push({ line: booth, parent: null });
+		for (const addOn of lines.filter((line) => line.parentLineId === booth.id)) rows.push({ line: addOn, parent: booth });
+	}
+	for (const line of lines) if (!rows.some((row) => row.line.id === line.id)) rows.push({ line, parent: null });
+	return rows;
+}
+
+export const isIncompleteApplication =(application: Pick<Application, 'category'>) => !application.category;
 
 export type StageActionKey = 'start_review' | 'decline' | 'withdraw' | 'reopen' | 'mark_billed' | 'mark_first_payment';
 
