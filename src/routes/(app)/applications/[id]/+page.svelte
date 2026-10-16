@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import type { PageProps } from './$types';
 	import ActivityTimeline from '#lib/components/ActivityTimeline.svelte';
+	import ApplicationEmails from '#lib/components/ApplicationEmails.svelte';
 	import CallActionsCard from '#lib/components/CallActionsCard.svelte';
 	import LabelBadge from '#lib/components/LabelBadge.svelte';
 	import NotesCard from '#lib/components/NotesCard.svelte';
@@ -11,6 +13,7 @@
 	import TotalsCard from '#lib/components/TotalsCard.svelte';
 	import { bundledNotice, daysInStage, getApplication, type Application } from '#lib/applications.ts';
 	import { listWeekends, type MarketWeekend } from '#lib/catalog.ts';
+	import { emailsTabHref, listApplicationEmails } from '#lib/emails.ts';
 	import { formatDate, formatDateTime } from '#lib/format.ts';
 	import { MAX_CALL_ATTEMPTS } from '#lib/options.ts';
 	import { Resource } from '#lib/resource.svelte.ts';
@@ -58,6 +61,33 @@
 		}
 	}
 
+	// Tabs live in the URL (?tab=emails&email=7, or &task=<review task id>) so links open the right email.
+	const tab = $derived(page.url.searchParams.get('tab') === 'emails' ? 'emails' : 'details');
+	const selectedEmail = $derived.by(() => {
+		const value = Number(page.url.searchParams.get('email'));
+		return Number.isInteger(value) && value > 0 ? value : null;
+	});
+	const reviewTaskId = $derived(page.url.searchParams.get('task'));
+	let awaitingReview = $state<number | null>(null);
+	function loadEmailCount() {
+		const id = data.id;
+		listApplicationEmails(id, { status: 'draft', pageSize: 1 })
+			.then((result) => (awaitingReview = result.count))
+			.catch(() => (awaitingReview = null));
+	}
+	$effect(loadEmailCount);
+
+	function selectEmail(id: number | null) {
+		const href = id === null ? emailsTabHref(data.id) : emailsTabHref(data.id, { email: id });
+		// Opening the email of a review-task link replaces that link, so Back skips it.
+		goto(href, { reset: false, replace: reviewTaskId !== null });
+	}
+
+	function emailsChanged() {
+		loadEmailCount();
+		if (loadedVendorId) activity.retry();
+	}
+
 	const days = $derived(application ? daysInStage(application) : null);
 	const notices = $derived.by(() => {
 		const params = page.url.searchParams;
@@ -98,6 +128,30 @@
 			</dl>
 		</div>
 
+		<nav aria-label="Application sections" class="tabs tabs-box tabs-sm w-fit">
+			<a href={`/applications/${application.id}`} class={['tab', tab === 'details' && 'tab-active']} aria-current={tab === 'details' ? 'page' : undefined} data-sveltekit-reset="false">Details</a>
+			<a href={emailsTabHref(application.id)} class={['tab gap-1', tab === 'emails' && 'tab-active']} aria-current={tab === 'emails' ? 'page' : undefined} data-sveltekit-reset="false">
+				Emails
+				{#if awaitingReview}<span class="badge badge-xs badge-warning" title="Awaiting review">{awaitingReview}<span class="sr-only">{' awaiting review'}</span></span>{/if}
+			</a>
+		</nav>
+
+		{#if tab === 'emails'}
+			<div class="card bg-base-100 border border-base-200 shadow-sm">
+				<div class="card-body p-4">
+					{#key application.id}
+						<ApplicationEmails
+							applicationId={application.id}
+							lines={application.lines}
+							selectedId={selectedEmail}
+							taskId={reviewTaskId}
+							onselect={selectEmail}
+							onchanged={emailsChanged}
+						/>
+					{/key}
+				</div>
+			</div>
+		{:else}
 		<div class="grid grid-cols-1 gap-4 lg:grid-cols-10">
 			<div class="flex flex-col gap-4 lg:col-span-7">
 				{#if weekends.error}
@@ -144,6 +198,7 @@
 				{/key}
 			</div>
 		</div>
+		{/if}
 	</div>
 {:else if applicationResource.notFound}
 	<div class="card bg-base-100 mx-auto max-w-xl border border-base-200 shadow-sm">
