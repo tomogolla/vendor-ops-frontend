@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { isActive, navItems } from '#lib/nav.ts';
 
 describe('navigation', () => {
-	it('lists the v1.3 menu in order, without customers or payments', () => {
+	it('lists the menu in order, without customers or payments', () => {
 		expect(navItems.map((item) => item.label)).toEqual([
-			'Overview', 'Applications', 'Vendors', 'Market weekends', 'Tasks', 'Finance'
+			'Overview', 'Applications', 'Vendors', 'Market weekends', 'Tasks', 'Finance', 'Settings'
 		]);
 		expect(navItems.filter((item) => item.showOpenTasks).map((item) => item.href)).toEqual(['/tasks']);
 	});
