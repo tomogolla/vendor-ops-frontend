@@ -1,0 +1,785 @@
+{
+	"application_emails_admin": {
+		"count": 2,
+		"next": null,
+		"previous": null,
+		"results": [
+			{
+				"id": 11,
+				"template_key": "waitlist_update",
+				"template_name": "Waitlist update",
+				"status": "draft",
+				"status_label": "Draft (awaiting review)",
+				"subject": "Waitlist update for Oct 10 & 11: 8ft x 8ft",
+				"recipient_name": "Example Ceramics",
+				"recipient_email": "hello@example.com",
+				"delivered_to_email": "",
+				"redirected": false,
+				"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+				"vendor": {
+					"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+					"brand_name": "Example Ceramics"
+				},
+				"market_weekend": {
+					"id": "f26cc1ce-545f-4ad0-910e-26753372f59c",
+					"label": "Oct 10 & 11",
+					"start_date": "2026-10-10"
+				},
+				"application_line": {
+					"id": "be7bfa3d-195f-4569-92c8-7470a4d4ed28",
+					"product_name": "8ft x 8ft",
+					"weekend_label": "Oct 10 & 11",
+					"status": "WAITLISTED"
+				},
+				"scheduled_for": null,
+				"sent_at": null,
+				"delivered_at": null,
+				"failure_code": "",
+				"failure_detail": "",
+				"revision": 0,
+				"review_task": {
+					"id": "f2db7d33-eb57-434b-afe3-72c831b876e8",
+					"status": "TODO",
+					"is_open": true,
+					"title": "Review email: Waitlist update to Example Ceramics",
+					"owner": null,
+					"due_at": "2026-10-16T15:30:42.478127Z",
+					"outcome": ""
+				},
+				"created_by": {
+					"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+					"username": "admin",
+					"name": "Avery Admin",
+					"role": "ADMINISTRATOR"
+				},
+				"created_at": "2026-10-16T13:30:42.476200Z",
+				"updated_at": "2026-10-16T13:30:42.486338Z",
+				"permissions": {
+					"can_edit": true,
+					"can_approve": true,
+					"can_cancel": true
+				},
+				"no_longer_applies": null
+			},
+			{
+				"id": 10,
+				"template_key": "application_received",
+				"template_name": "Application received",
+				"status": "draft",
+				"status_label": "Draft (awaiting review)",
+				"subject": "We received your application, Example Ceramics",
+				"recipient_name": "Example Ceramics",
+				"recipient_email": "hello@example.com",
+				"delivered_to_email": "",
+				"redirected": false,
+				"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+				"vendor": {
+					"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+					"brand_name": "Example Ceramics"
+				},
+				"market_weekend": null,
+				"application_line": null,
+				"scheduled_for": null,
+				"sent_at": null,
+				"delivered_at": null,
+				"failure_code": "",
+				"failure_detail": "",
+				"revision": 0,
+				"review_task": {
+					"id": "c0afbc63-bc84-4c0f-8623-23dab802532c",
+					"status": "TODO",
+					"is_open": true,
+					"title": "Review email: Application received to Example Ceramics",
+					"owner": null,
+					"due_at": "2026-10-16T15:30:42.405845Z",
+					"outcome": ""
+				},
+				"created_by": {
+					"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+					"username": "admin",
+					"name": "Avery Admin",
+					"role": "ADMINISTRATOR"
+				},
+				"created_at": "2026-10-16T13:30:42.401378Z",
+				"updated_at": "2026-10-16T13:30:42.410970Z",
+				"permissions": {
+					"can_edit": true,
+					"can_approve": true,
+					"can_cancel": true
+				},
+				"no_longer_applies": null
+			}
+		]
+	},
+	"application_emails_member": {
+		"count": 2,
+		"next": null,
+		"previous": null,
+		"results": [
+			{
+				"id": 11,
+				"template_key": "waitlist_update",
+				"template_name": "Waitlist update",
+				"status": "draft",
+				"status_label": "Draft (awaiting review)",
+				"subject": "Waitlist update for Oct 10 & 11: 8ft x 8ft",
+				"recipient_name": "Example Ceramics",
+				"recipient_email": "hello@example.com",
+				"delivered_to_email": "",
+				"redirected": false,
+				"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+				"vendor": {
+					"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+					"brand_name": "Example Ceramics"
+				},
+				"market_weekend": {
+					"id": "f26cc1ce-545f-4ad0-910e-26753372f59c",
+					"label": "Oct 10 & 11",
+					"start_date": "2026-10-10"
+				},
+				"application_line": {
+					"id": "be7bfa3d-195f-4569-92c8-7470a4d4ed28",
+					"product_name": "8ft x 8ft",
+					"weekend_label": "Oct 10 & 11",
+					"status": "WAITLISTED"
+				},
+				"scheduled_for": null,
+				"sent_at": null,
+				"delivered_at": null,
+				"failure_code": "",
+				"failure_detail": "",
+				"revision": 0,
+				"review_task": {
+					"id": "f2db7d33-eb57-434b-afe3-72c831b876e8",
+					"status": "TODO",
+					"is_open": true,
+					"title": "Review email: Waitlist update to Example Ceramics",
+					"owner": null,
+					"due_at": "2026-10-16T15:30:42.478127Z",
+					"outcome": ""
+				},
+				"created_by": {
+					"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+					"username": "admin",
+					"name": "Avery Admin",
+					"role": "ADMINISTRATOR"
+				},
+				"created_at": "2026-10-16T13:30:42.476200Z",
+				"updated_at": "2026-10-16T13:30:42.486338Z",
+				"permissions": {
+					"can_edit": true,
+					"can_approve": false,
+					"can_cancel": false
+				},
+				"no_longer_applies": null
+			},
+			{
+				"id": 10,
+				"template_key": "application_received",
+				"template_name": "Application received",
+				"status": "draft",
+				"status_label": "Draft (awaiting review)",
+				"subject": "We received your application, Example Ceramics",
+				"recipient_name": "Example Ceramics",
+				"recipient_email": "hello@example.com",
+				"delivered_to_email": "",
+				"redirected": false,
+				"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+				"vendor": {
+					"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+					"brand_name": "Example Ceramics"
+				},
+				"market_weekend": null,
+				"application_line": null,
+				"scheduled_for": null,
+				"sent_at": null,
+				"delivered_at": null,
+				"failure_code": "",
+				"failure_detail": "",
+				"revision": 0,
+				"review_task": {
+					"id": "c0afbc63-bc84-4c0f-8623-23dab802532c",
+					"status": "TODO",
+					"is_open": true,
+					"title": "Review email: Application received to Example Ceramics",
+					"owner": null,
+					"due_at": "2026-10-16T15:30:42.405845Z",
+					"outcome": ""
+				},
+				"created_by": {
+					"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+					"username": "admin",
+					"name": "Avery Admin",
+					"role": "ADMINISTRATOR"
+				},
+				"created_at": "2026-10-16T13:30:42.401378Z",
+				"updated_at": "2026-10-16T13:30:42.410970Z",
+				"permissions": {
+					"can_edit": true,
+					"can_approve": false,
+					"can_cancel": false
+				},
+				"no_longer_applies": null
+			}
+		]
+	},
+	"application_emails_mixed": {
+		"count": 3,
+		"next": null,
+		"previous": null,
+		"results": [
+			{
+				"id": 12,
+				"template_key": "call_follow_up",
+				"template_name": "Call follow-up",
+				"status": "cancelled",
+				"status_label": "Cancelled",
+				"subject": "Following up on our call, Example Ceramics",
+				"recipient_name": "Example Ceramics",
+				"recipient_email": "hello@example.com",
+				"delivered_to_email": "",
+				"redirected": false,
+				"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+				"vendor": {
+					"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+					"brand_name": "Example Ceramics"
+				},
+				"market_weekend": null,
+				"application_line": null,
+				"scheduled_for": null,
+				"sent_at": null,
+				"delivered_at": null,
+				"failure_code": "cancelled",
+				"failure_detail": "Sent by phone instead",
+				"revision": 0,
+				"review_task": {
+					"id": "987ab50b-09a6-499e-b826-61d37cd2f1fb",
+					"status": "CANCELLED",
+					"is_open": false,
+					"title": "Review email: Call follow-up to Example Ceramics",
+					"owner": null,
+					"due_at": "2026-10-16T15:30:43.419423Z",
+					"outcome": "Cancelled"
+				},
+				"created_by": {
+					"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+					"username": "admin",
+					"name": "Avery Admin",
+					"role": "ADMINISTRATOR"
+				},
+				"created_at": "2026-10-16T13:30:43.417815Z",
+				"updated_at": "2026-10-16T13:30:43.542675Z",
+				"permissions": {
+					"can_edit": false,
+					"can_approve": false,
+					"can_cancel": false
+				},
+				"no_longer_applies": null
+			},
+			{
+				"id": 11,
+				"template_key": "waitlist_update",
+				"template_name": "Waitlist update",
+				"status": "draft",
+				"status_label": "Draft (awaiting review)",
+				"subject": "Waitlist update for Oct 10 & 11: 8ft x 8ft",
+				"recipient_name": "Example Ceramics",
+				"recipient_email": "hello@example.com",
+				"delivered_to_email": "",
+				"redirected": false,
+				"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+				"vendor": {
+					"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+					"brand_name": "Example Ceramics"
+				},
+				"market_weekend": {
+					"id": "f26cc1ce-545f-4ad0-910e-26753372f59c",
+					"label": "Oct 10 & 11",
+					"start_date": "2026-10-10"
+				},
+				"application_line": {
+					"id": "be7bfa3d-195f-4569-92c8-7470a4d4ed28",
+					"product_name": "8ft x 8ft",
+					"weekend_label": "Oct 10 & 11",
+					"status": "CONFIRMED"
+				},
+				"scheduled_for": null,
+				"sent_at": null,
+				"delivered_at": null,
+				"failure_code": "",
+				"failure_detail": "",
+				"revision": 0,
+				"review_task": {
+					"id": "f2db7d33-eb57-434b-afe3-72c831b876e8",
+					"status": "TODO",
+					"is_open": true,
+					"title": "Review email: Waitlist update to Example Ceramics",
+					"owner": null,
+					"due_at": "2026-10-16T15:30:42.478127Z",
+					"outcome": ""
+				},
+				"created_by": {
+					"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+					"username": "admin",
+					"name": "Avery Admin",
+					"role": "ADMINISTRATOR"
+				},
+				"created_at": "2026-10-16T13:30:42.476200Z",
+				"updated_at": "2026-10-16T13:30:42.486338Z",
+				"permissions": {
+					"can_edit": true,
+					"can_approve": true,
+					"can_cancel": true
+				},
+				"no_longer_applies": "The 8ft x 8ft line for Oct 10 & 11 is no longer waitlisted (confirmed)."
+			},
+			{
+				"id": 10,
+				"template_key": "application_received",
+				"template_name": "Application received",
+				"status": "delivered",
+				"status_label": "Delivered",
+				"subject": "Thanks for applying, Example Ceramics",
+				"recipient_name": "Example Ceramics",
+				"recipient_email": "hello@example.com",
+				"delivered_to_email": "",
+				"redirected": false,
+				"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+				"vendor": {
+					"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+					"brand_name": "Example Ceramics"
+				},
+				"market_weekend": null,
+				"application_line": null,
+				"scheduled_for": "2026-10-16T13:30:43.278938Z",
+				"sent_at": "2026-10-16T13:30:42.401378Z",
+				"delivered_at": "2026-10-16T13:30:42.401378Z",
+				"failure_code": "",
+				"failure_detail": "",
+				"revision": 1,
+				"review_task": {
+					"id": "c0afbc63-bc84-4c0f-8623-23dab802532c",
+					"status": "COMPLETED",
+					"is_open": false,
+					"title": "Review email: Application received to Example Ceramics",
+					"owner": null,
+					"due_at": "2026-10-16T15:30:42.405845Z",
+					"outcome": "Approved"
+				},
+				"created_by": {
+					"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+					"username": "admin",
+					"name": "Avery Admin",
+					"role": "ADMINISTRATOR"
+				},
+				"created_at": "2026-10-16T13:30:42.401378Z",
+				"updated_at": "2026-10-16T13:30:43.283092Z",
+				"permissions": {
+					"can_edit": false,
+					"can_approve": false,
+					"can_cancel": false
+				},
+				"no_longer_applies": null
+			}
+		]
+	},
+	"message_detail_draft": {
+		"id": 10,
+		"template_key": "application_received",
+		"template_name": "Application received",
+		"status": "draft",
+		"status_label": "Draft (awaiting review)",
+		"subject": "We received your application, Example Ceramics",
+		"recipient_name": "Example Ceramics",
+		"recipient_email": "hello@example.com",
+		"delivered_to_email": "",
+		"redirected": false,
+		"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+		"vendor": {
+			"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+			"brand_name": "Example Ceramics"
+		},
+		"market_weekend": null,
+		"application_line": null,
+		"scheduled_for": null,
+		"sent_at": null,
+		"delivered_at": null,
+		"failure_code": "",
+		"failure_detail": "",
+		"revision": 0,
+		"review_task": {
+			"id": "c0afbc63-bc84-4c0f-8623-23dab802532c",
+			"status": "TODO",
+			"is_open": true,
+			"title": "Review email: Application received to Example Ceramics",
+			"owner": null,
+			"due_at": "2026-10-16T15:30:42.405845Z",
+			"outcome": ""
+		},
+		"created_by": {
+			"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+			"username": "admin",
+			"name": "Avery Admin",
+			"role": "ADMINISTRATOR"
+		},
+		"created_at": "2026-10-16T13:30:42.401378Z",
+		"updated_at": "2026-10-16T13:30:42.410970Z",
+		"permissions": {
+			"can_edit": true,
+			"can_approve": true,
+			"can_cancel": true
+		},
+		"no_longer_applies": null,
+		"html_body": "<p>Hi Example Ceramics,</p><p>Thanks for applying to The Good Flea. Your reference is <strong>APP-AF1A91EF</strong>. We will call you shortly to talk about your booth.</p><p>The Good Flea team<br>The Good Flea</p>",
+		"text_body": "Hi Example Ceramics,\n\nThanks for applying to The Good Flea. Your reference is APP-AF1A91EF. We will call you shortly to talk about your booth.\n\nThe Good Flea team\nThe Good Flea",
+		"sender_name": "The Good Flea",
+		"sender_email": "",
+		"reply_to_email": "",
+		"provider": "",
+		"provider_message_id": "",
+		"attempt_count": 0,
+		"event_key": "application:af1a91ef-2000-467c-851e-09257c4d7bc2:received",
+		"trigger": {}
+	},
+	"message_revise": {
+		"id": 10,
+		"template_key": "application_received",
+		"template_name": "Application received",
+		"status": "draft",
+		"status_label": "Draft (awaiting review)",
+		"subject": "Thanks for applying, Example Ceramics",
+		"recipient_name": "Example Ceramics",
+		"recipient_email": "hello@example.com",
+		"delivered_to_email": "",
+		"redirected": false,
+		"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+		"vendor": {
+			"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+			"brand_name": "Example Ceramics"
+		},
+		"market_weekend": null,
+		"application_line": null,
+		"scheduled_for": null,
+		"sent_at": null,
+		"delivered_at": null,
+		"failure_code": "",
+		"failure_detail": "",
+		"revision": 1,
+		"review_task": {
+			"id": "c0afbc63-bc84-4c0f-8623-23dab802532c",
+			"status": "TODO",
+			"is_open": true,
+			"title": "Review email: Application received to Example Ceramics",
+			"owner": null,
+			"due_at": "2026-10-16T15:30:42.405845Z",
+			"outcome": ""
+		},
+		"created_by": {
+			"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+			"username": "admin",
+			"name": "Avery Admin",
+			"role": "ADMINISTRATOR"
+		},
+		"created_at": "2026-10-16T13:30:42.401378Z",
+		"updated_at": "2026-10-16T13:30:43.057513Z",
+		"permissions": {
+			"can_edit": true,
+			"can_approve": true,
+			"can_cancel": true
+		},
+		"no_longer_applies": null,
+		"html_body": "<p>Hi Example Ceramics,</p><p>Thanks for applying to The Good Flea. Your reference is <strong>APP-AF1A91EF</strong>. We will call you shortly to talk about your booth.</p><p>The Good Flea team<br>The Good Flea</p>",
+		"text_body": "Hi Example Ceramics,\n\nThanks for applying to The Good Flea. Your reference is APP-AF1A91EF. We will call you shortly to talk about your booth.\n\nThe Good Flea team\nThe Good Flea",
+		"sender_name": "The Good Flea",
+		"sender_email": "",
+		"reply_to_email": "",
+		"provider": "",
+		"provider_message_id": "",
+		"attempt_count": 0,
+		"event_key": "application:af1a91ef-2000-467c-851e-09257c4d7bc2:received",
+		"trigger": {}
+	},
+	"message_revise_invalid": {
+		"subject": "A subject is required."
+	},
+	"message_revisions": [
+		{
+			"number": 1,
+			"subject": "We received your application, Example Ceramics",
+			"html_body": "<p>Hi Example Ceramics,</p><p>Thanks for applying to The Good Flea. Your reference is <strong>APP-AF1A91EF</strong>. We will call you shortly to talk about your booth.</p><p>The Good Flea team<br>The Good Flea</p>",
+			"text_body": "Hi Example Ceramics,\n\nThanks for applying to The Good Flea. Your reference is APP-AF1A91EF. We will call you shortly to talk about your booth.\n\nThe Good Flea team\nThe Good Flea",
+			"replaced_by": {
+				"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+				"username": "admin",
+				"name": "Avery Admin",
+				"role": "ADMINISTRATOR"
+			},
+			"note": "Shorter subject",
+			"created_at": "2026-10-16T13:30:43.051780Z"
+		}
+	],
+	"message_approve": {
+		"id": 10,
+		"template_key": "application_received",
+		"template_name": "Application received",
+		"status": "queued",
+		"status_label": "Queued",
+		"subject": "Thanks for applying, Example Ceramics",
+		"recipient_name": "Example Ceramics",
+		"recipient_email": "hello@example.com",
+		"delivered_to_email": "",
+		"redirected": false,
+		"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+		"vendor": {
+			"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+			"brand_name": "Example Ceramics"
+		},
+		"market_weekend": null,
+		"application_line": null,
+		"scheduled_for": "2026-10-16T13:30:43.278938Z",
+		"sent_at": null,
+		"delivered_at": null,
+		"failure_code": "",
+		"failure_detail": "",
+		"revision": 1,
+		"review_task": {
+			"id": "c0afbc63-bc84-4c0f-8623-23dab802532c",
+			"status": "COMPLETED",
+			"is_open": false,
+			"title": "Review email: Application received to Example Ceramics",
+			"owner": null,
+			"due_at": "2026-10-16T15:30:42.405845Z",
+			"outcome": "Approved"
+		},
+		"created_by": {
+			"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+			"username": "admin",
+			"name": "Avery Admin",
+			"role": "ADMINISTRATOR"
+		},
+		"created_at": "2026-10-16T13:30:42.401378Z",
+		"updated_at": "2026-10-16T13:30:43.283092Z",
+		"permissions": {
+			"can_edit": false,
+			"can_approve": false,
+			"can_cancel": true
+		},
+		"no_longer_applies": null,
+		"html_body": "<p>Hi Example Ceramics,</p><p>Thanks for applying to The Good Flea. Your reference is <strong>APP-AF1A91EF</strong>. We will call you shortly to talk about your booth.</p><p>The Good Flea team<br>The Good Flea</p>",
+		"text_body": "Hi Example Ceramics,\n\nThanks for applying to The Good Flea. Your reference is APP-AF1A91EF. We will call you shortly to talk about your booth.\n\nThe Good Flea team\nThe Good Flea",
+		"sender_name": "The Good Flea",
+		"sender_email": "",
+		"reply_to_email": "",
+		"provider": "",
+		"provider_message_id": "",
+		"attempt_count": 0,
+		"event_key": "application:af1a91ef-2000-467c-851e-09257c4d7bc2:received",
+		"trigger": {}
+	},
+	"message_approve_forbidden": {
+		"detail": "Only administrators, the assigned reviewer or the application reviewer can approve emails."
+	},
+	"message_revise_after_approve": {
+		"status": "Only drafts awaiting review can be edited."
+	},
+	"message_cancel": {
+		"id": 12,
+		"template_key": "call_follow_up",
+		"template_name": "Call follow-up",
+		"status": "cancelled",
+		"status_label": "Cancelled",
+		"subject": "Following up on our call, Example Ceramics",
+		"recipient_name": "Example Ceramics",
+		"recipient_email": "hello@example.com",
+		"delivered_to_email": "",
+		"redirected": false,
+		"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+		"vendor": {
+			"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+			"brand_name": "Example Ceramics"
+		},
+		"market_weekend": null,
+		"application_line": null,
+		"scheduled_for": null,
+		"sent_at": null,
+		"delivered_at": null,
+		"failure_code": "cancelled",
+		"failure_detail": "Sent by phone instead",
+		"revision": 0,
+		"review_task": {
+			"id": "987ab50b-09a6-499e-b826-61d37cd2f1fb",
+			"status": "CANCELLED",
+			"is_open": false,
+			"title": "Review email: Call follow-up to Example Ceramics",
+			"owner": null,
+			"due_at": "2026-10-16T15:30:43.419423Z",
+			"outcome": "Cancelled"
+		},
+		"created_by": {
+			"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+			"username": "admin",
+			"name": "Avery Admin",
+			"role": "ADMINISTRATOR"
+		},
+		"created_at": "2026-10-16T13:30:43.417815Z",
+		"updated_at": "2026-10-16T13:30:43.542675Z",
+		"permissions": {
+			"can_edit": false,
+			"can_approve": false,
+			"can_cancel": false
+		},
+		"no_longer_applies": null,
+		"html_body": "<p>Hi Example Ceramics,</p><p>We tried to reach you about your application to The Good Flea. Reply to this email with a good time to talk.</p><p>The Good Flea team<br>The Good Flea</p>",
+		"text_body": "Hi Example Ceramics,\n\nWe tried to reach you about your application to The Good Flea. Reply to this email with a good time to talk.\n\nThe Good Flea team\nThe Good Flea",
+		"sender_name": "The Good Flea",
+		"sender_email": "",
+		"reply_to_email": "",
+		"provider": "",
+		"provider_message_id": "",
+		"attempt_count": 0,
+		"event_key": "manual:1032973e-0187-413b-a574-fad2321e1678",
+		"trigger": {
+			"manual": true
+		}
+	},
+	"message_detail_stale": {
+		"id": 11,
+		"template_key": "waitlist_update",
+		"template_name": "Waitlist update",
+		"status": "draft",
+		"status_label": "Draft (awaiting review)",
+		"subject": "Waitlist update for Oct 10 & 11: 8ft x 8ft",
+		"recipient_name": "Example Ceramics",
+		"recipient_email": "hello@example.com",
+		"delivered_to_email": "",
+		"redirected": false,
+		"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+		"vendor": {
+			"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+			"brand_name": "Example Ceramics"
+		},
+		"market_weekend": {
+			"id": "f26cc1ce-545f-4ad0-910e-26753372f59c",
+			"label": "Oct 10 & 11",
+			"start_date": "2026-10-10"
+		},
+		"application_line": {
+			"id": "be7bfa3d-195f-4569-92c8-7470a4d4ed28",
+			"product_name": "8ft x 8ft",
+			"weekend_label": "Oct 10 & 11",
+			"status": "CONFIRMED"
+		},
+		"scheduled_for": null,
+		"sent_at": null,
+		"delivered_at": null,
+		"failure_code": "",
+		"failure_detail": "",
+		"revision": 0,
+		"review_task": {
+			"id": "f2db7d33-eb57-434b-afe3-72c831b876e8",
+			"status": "TODO",
+			"is_open": true,
+			"title": "Review email: Waitlist update to Example Ceramics",
+			"owner": null,
+			"due_at": "2026-10-16T15:30:42.478127Z",
+			"outcome": ""
+		},
+		"created_by": {
+			"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+			"username": "admin",
+			"name": "Avery Admin",
+			"role": "ADMINISTRATOR"
+		},
+		"created_at": "2026-10-16T13:30:42.476200Z",
+		"updated_at": "2026-10-16T13:30:42.486338Z",
+		"permissions": {
+			"can_edit": true,
+			"can_approve": true,
+			"can_cancel": true
+		},
+		"no_longer_applies": "The 8ft x 8ft line for Oct 10 & 11 is no longer waitlisted (confirmed).",
+		"html_body": "<p>Hi Example Ceramics,</p><p>The <strong>8ft x 8ft</strong> booth you asked for at Oct 10 &amp; 11 (Oct 10 \u2013 11, 2026) is full, so we have added that booth to the waitlist (reference APP-AF1A91EF). Any other booths you requested are not affected. We will let you know if a spot opens up.</p><p>The Good Flea team<br>The Good Flea</p>",
+		"text_body": "Hi Example Ceramics,\n\nThe 8ft x 8ft booth you asked for at Oct 10 & 11 (Oct 10 \u2013 11, 2026) is full, so we have added that booth to the waitlist (reference APP-AF1A91EF). Any other booths you requested are not affected. We will let you know if a spot opens up.\n\nThe Good Flea team\nThe Good Flea",
+		"sender_name": "The Good Flea",
+		"sender_email": "",
+		"reply_to_email": "",
+		"provider": "",
+		"provider_message_id": "",
+		"attempt_count": 0,
+		"event_key": "line:be7bfa3d-195f-4569-92c8-7470a4d4ed28:waitlisted",
+		"trigger": {
+			"line_id": "be7bfa3d-195f-4569-92c8-7470a4d4ed28",
+			"waitlisted_at": "2026-10-16T13:30:42.455312+00:00"
+		}
+	},
+	"message_approve_stale": {
+		"status": "This email no longer applies: The 8ft x 8ft line for Oct 10 & 11 is no longer waitlisted (confirmed). Cancel it instead."
+	},
+	"prepare_created": {
+		"id": 12,
+		"template_key": "call_follow_up",
+		"template_name": "Call follow-up",
+		"status": "draft",
+		"status_label": "Draft (awaiting review)",
+		"subject": "Following up on our call, Example Ceramics",
+		"recipient_name": "Example Ceramics",
+		"recipient_email": "hello@example.com",
+		"delivered_to_email": "",
+		"redirected": false,
+		"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+		"vendor": {
+			"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+			"brand_name": "Example Ceramics"
+		},
+		"market_weekend": null,
+		"application_line": null,
+		"scheduled_for": null,
+		"sent_at": null,
+		"delivered_at": null,
+		"failure_code": "",
+		"failure_detail": "",
+		"revision": 0,
+		"review_task": {
+			"id": "987ab50b-09a6-499e-b826-61d37cd2f1fb",
+			"status": "TODO",
+			"is_open": true,
+			"title": "Review email: Call follow-up to Example Ceramics",
+			"owner": null,
+			"due_at": "2026-10-16T15:30:43.419423Z",
+			"outcome": ""
+		},
+		"created_by": {
+			"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+			"username": "admin",
+			"name": "Avery Admin",
+			"role": "ADMINISTRATOR"
+		},
+		"created_at": "2026-10-16T13:30:43.417815Z",
+		"updated_at": "2026-10-16T13:30:43.426055Z",
+		"permissions": {
+			"can_edit": true,
+			"can_approve": true,
+			"can_cancel": true
+		},
+		"no_longer_applies": null,
+		"html_body": "<p>Hi Example Ceramics,</p><p>We tried to reach you about your application to The Good Flea. Reply to this email with a good time to talk.</p><p>The Good Flea team<br>The Good Flea</p>",
+		"text_body": "Hi Example Ceramics,\n\nWe tried to reach you about your application to The Good Flea. Reply to this email with a good time to talk.\n\nThe Good Flea team\nThe Good Flea",
+		"sender_name": "The Good Flea",
+		"sender_email": "",
+		"reply_to_email": "",
+		"provider": "",
+		"provider_message_id": "",
+		"attempt_count": 0,
+		"event_key": "manual:1032973e-0187-413b-a574-fad2321e1678",
+		"trigger": {
+			"manual": true
+		}
+	},
+	"prepare_duplicate": {
+		"template_key": "A draft of this email is already awaiting review.",
+		"message_id": "12"
+	},
+	"prepare_needs_line": {
+		"template_key": "This email needs booth_name, market_name, which this application cannot provide (choose a booth line)."
+	}
+}

@@ -1,0 +1,113 @@
+{
+	"overview": {
+		"counts": {
+			"awaiting_review": 1,
+			"queued": 0,
+			"sent": 1,
+			"problems": 0,
+			"not_sent": 1
+		},
+		"by_status": {
+			"draft": 1,
+			"cancelled": 1,
+			"delivered": 1
+		},
+		"filters": {
+			"awaiting_review": {
+				"bucket": "awaiting_review"
+			},
+			"queued": {
+				"bucket": "queued"
+			},
+			"sent": {
+				"bucket": "sent"
+			},
+			"problems": {
+				"bucket": "problems"
+			},
+			"not_sent": {
+				"bucket": "not_sent"
+			}
+		},
+		"recent_activity": [
+			{
+				"id": "cba30116-1098-41d0-af7a-aae83e9fb98b",
+				"event_type": "EMAIL_CANCELLED",
+				"description": "Email cancelled",
+				"vendor": {
+					"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+					"brand_name": "Example Ceramics"
+				},
+				"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+				"email_message_id": 12,
+				"actor": "Avery Admin",
+				"created_at": "2026-10-16T13:30:43.551455Z"
+			},
+			{
+				"id": "af0df66f-abb5-4179-baad-5cee6e905a9f",
+				"event_type": "EMAIL_DRAFTED",
+				"description": "Email \"Call follow-up\" drafted for review",
+				"vendor": {
+					"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+					"brand_name": "Example Ceramics"
+				},
+				"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+				"email_message_id": 12,
+				"actor": "Avery Admin",
+				"created_at": "2026-10-16T13:30:43.428128Z"
+			},
+			{
+				"id": "9e21746c-918e-45e7-a90e-8e3a706ce24d",
+				"event_type": "EMAIL_QUEUED",
+				"description": "Drafted email approved and queued",
+				"vendor": {
+					"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+					"brand_name": "Example Ceramics"
+				},
+				"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+				"email_message_id": 10,
+				"actor": "Avery Admin",
+				"created_at": "2026-10-16T13:30:43.294830Z"
+			},
+			{
+				"id": "8713c7d5-8092-4499-85ff-493e7ed3738d",
+				"event_type": "EMAIL_REVISED",
+				"description": "Email draft edited (revision 1)",
+				"vendor": {
+					"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+					"brand_name": "Example Ceramics"
+				},
+				"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+				"email_message_id": 10,
+				"actor": "Avery Admin",
+				"created_at": "2026-10-16T13:30:43.067905Z"
+			},
+			{
+				"id": "de1c194c-f8fb-4617-8e46-74b5ffa2f148",
+				"event_type": "EMAIL_DRAFTED",
+				"description": "Email \"Waitlist update\" drafted for review",
+				"vendor": {
+					"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+					"brand_name": "Example Ceramics"
+				},
+				"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+				"email_message_id": 11,
+				"actor": "Avery Admin",
+				"created_at": "2026-10-16T13:30:42.489038Z"
+			},
+			{
+				"id": "2577fa83-8c2c-40f2-8a02-b2fa70f787fd",
+				"event_type": "EMAIL_DRAFTED",
+				"description": "Email \"Application received\" drafted for review",
+				"vendor": {
+					"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+					"brand_name": "Example Ceramics"
+				},
+				"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+				"email_message_id": 10,
+				"actor": "Avery Admin",
+				"created_at": "2026-10-16T13:30:42.412950Z"
+			}
+		]
+	}
+}
