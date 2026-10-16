@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { BOARD_STAGES, countApplications, getSummary, stageLabels, type ApplicationSummary } from '#lib/applications.ts';
 	import { capacityAlerts, listWeekends, type CapacityAlert } from '#lib/catalog.ts';
+	import EmailOverviewCard from '#lib/components/EmailOverviewCard.svelte';
+	import { SETTINGS_EMAILS_HREF, getEmailOverview, getEmailSettings, type EmailOverview } from '#lib/emails.ts';
 	import { formatDateTime } from '#lib/format.ts';
 	import { countTasks, listTasks, type Task } from '#lib/vendor-store.ts';
 
@@ -45,7 +47,21 @@
 			.catch((error) => (alertsError = message(error, 'Could not load capacity.')));
 	}
 
+	let emails = $state<EmailOverview | null>(null);
+	let emailsError = $state('');
+	let liveSendingBlocked = $state<boolean | null>(null);
+	function loadEmails() {
+		emailsError = '';
+		getEmailOverview()
+			.then((result) => (emails = result))
+			.catch((error) => (emailsError = message(error, 'Could not load email counts.')));
+		getEmailSettings()
+			.then((settings) => (liveSendingBlocked = settings.liveSendingBlocked))
+			.catch(() => (liveSendingBlocked = null));
+	}
+
 	$effect(loadCalls);
+	$effect(loadEmails);
 	$effect(loadPipeline);
 	$effect(loadCapacity);
 
@@ -182,6 +198,23 @@
 						{/each}
 					</ul>
 					<div class="card-actions justify-end"><a href="/market-weekends" class="btn btn-xs">Market weekends</a></div>
+				{/if}
+			</div>
+		</section>
+
+		<section class="card card-xs bg-base-100 border border-base-200 shadow-sm" aria-labelledby="emails-heading">
+			<div class="card-body">
+				<h2 id="emails-heading" class="card-title">Vendor emails</h2>
+				{#if emailsError}
+					{@render retry(emailsError, loadEmails)}
+				{:else if !emails}
+					<p class="text-xs text-base-content/60">Loading…</p>
+				{:else}
+					<EmailOverviewCard overview={emails} {liveSendingBlocked} />
+					<div class="card-actions justify-end">
+						<a href="/tasks?view=emails" class="btn btn-xs">Email reviews</a>
+						<a href={`${SETTINGS_EMAILS_HREF}?tab=messages`} class="btn btn-xs">All emails</a>
+					</div>
 				{/if}
 			</div>
 		</section>
