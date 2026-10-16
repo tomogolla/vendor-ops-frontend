@@ -1,0 +1,40 @@
+{
+	"settings": {
+		"sending_mode": "disabled",
+		"redirect_to_email": "",
+		"sender_name": "The Good Flea",
+		"sender_email": "",
+		"reply_to_email": "",
+		"business_timezone": "America/New_York",
+		"send_window_start": "09:00:00",
+		"send_window_end": "18:00:00",
+		"updated_by": null,
+		"updated_at": "2026-10-15T15:04:12.599893Z",
+		"effective": {
+			"mode": "disabled",
+			"sender_name": "The Good Flea",
+			"sender_email": "",
+			"reply_to_email": "",
+			"redirect_to_email": ""
+		},
+		"environment": {
+			"global_mode": "disabled",
+			"provider": "console",
+			"provider_configured": true,
+			"delivers_real_email": false,
+			"webhook_configured": null,
+			"daily_limit": 90,
+			"daily_remaining": 90
+		},
+		"live_sending_blocked": true,
+		"notices": [
+			"Sending is disabled: queued emails wait and nothing is sent.",
+			"The console provider only prints messages on the server; nothing is delivered."
+		]
+	},
+	"settings_patch_invalid": {
+		"send_window_end": [
+			"The send window must end after it starts (same day)."
+		]
+	}
+}

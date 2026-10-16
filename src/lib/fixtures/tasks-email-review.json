@@ -1,0 +1,92 @@
+{
+	"tasks_email_review": {
+		"count": 2,
+		"next": null,
+		"previous": null,
+		"results": [
+			{
+				"id": "c0afbc63-bc84-4c0f-8623-23dab802532c",
+				"vendor": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+				"vendor_detail": {
+					"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+					"brand_name": "Example Ceramics",
+					"first_name": "",
+					"last_name": "",
+					"email": "hello@example.com",
+					"phone": "",
+					"instagram": "",
+					"status": "applied"
+				},
+				"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+				"title": "Review email: Application received to Example Ceramics",
+				"task_type": "EMAIL_REVIEW",
+				"status": "TODO",
+				"priority": "NORMAL",
+				"owner": null,
+				"owner_detail": null,
+				"created_by": {
+					"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+					"username": "admin",
+					"name": "Avery Admin",
+					"role": "ADMINISTRATOR"
+				},
+				"due_at": "2026-10-16T15:30:42.405845Z",
+				"completed_at": null,
+				"description": "Review the drafted \"Application received\" email on the application's Emails tab, then approve or cancel it.",
+				"outcome": "",
+				"notes": "",
+				"attempt_count": 0,
+				"last_attempt_at": null,
+				"callback_at": null,
+				"call_details": {},
+				"is_open": true,
+				"created_at": "2026-10-16T13:30:42.406427Z",
+				"updated_at": "2026-10-16T13:30:42.406437Z"
+			},
+			{
+				"id": "f2db7d33-eb57-434b-afe3-72c831b876e8",
+				"vendor": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+				"vendor_detail": {
+					"id": "f94bc429-a781-4a84-909a-cbbe62ac90b2",
+					"brand_name": "Example Ceramics",
+					"first_name": "",
+					"last_name": "",
+					"email": "hello@example.com",
+					"phone": "",
+					"instagram": "",
+					"status": "applied"
+				},
+				"application": "af1a91ef-2000-467c-851e-09257c4d7bc2",
+				"title": "Review email: Waitlist update to Example Ceramics",
+				"task_type": "EMAIL_REVIEW",
+				"status": "TODO",
+				"priority": "NORMAL",
+				"owner": null,
+				"owner_detail": null,
+				"created_by": {
+					"id": "9079f459-b0e3-43d3-b4fb-272948b169ea",
+					"username": "admin",
+					"name": "Avery Admin",
+					"role": "ADMINISTRATOR"
+				},
+				"due_at": "2026-10-16T15:30:42.478127Z",
+				"completed_at": null,
+				"description": "Review the drafted \"Waitlist update\" email on the application's Emails tab, then approve or cancel it.",
+				"outcome": "",
+				"notes": "",
+				"attempt_count": 0,
+				"last_attempt_at": null,
+				"callback_at": null,
+				"call_details": {},
+				"is_open": true,
+				"created_at": "2026-10-16T13:30:42.478717Z",
+				"updated_at": "2026-10-16T13:30:42.478728Z"
+			}
+		]
+	},
+	"task_complete_refused": {
+		"status": [
+			"Approve or cancel the email draft instead; that closes this task."
+		]
+	}
+}

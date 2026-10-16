@@ -1,0 +1,313 @@
+{
+	"templates": [
+		{
+			"key": "call_follow_up",
+			"name": "Call follow-up",
+			"description": "Sent after a discovery call attempt.",
+			"category": "operational",
+			"mode": "off",
+			"is_active": true,
+			"subject_template": "Following up on our call, {vendor_name}",
+			"html_template": "<p>Hi {vendor_name},</p><p>We tried to reach you about your application to The Good Flea. Reply to this email with a good time to talk.</p><p>{owner_name}<br>The Good Flea</p>",
+			"text_template": "Hi {vendor_name},\n\nWe tried to reach you about your application to The Good Flea. Reply to this email with a good time to talk.\n\n{owner_name}\nThe Good Flea",
+			"allowed_variables": [
+				"vendor_name",
+				"owner_name"
+			],
+			"available_variables": {
+				"vendor_name": "The vendor's brand name.",
+				"application_reference": "Short reference for the application, e.g. APP-1A2B3C4D.",
+				"market_name": "The market weekend label, e.g. \"Oct 10 & 11\".",
+				"market_dates": "The market weekend dates, e.g. \"Oct 10 \u2013 11, 2026\".",
+				"booth_name": "The booth (or add-on) a decision is about, e.g. \"8ft x 8ft\".",
+				"owner_name": "The team member who looks after the vendor, or \"The Good Flea team\".",
+				"payment_link": "A payment link (https). Only available once invoicing exists."
+			},
+			"updated_by": null,
+			"updated_at": "2026-10-15T15:04:10.101262Z"
+		},
+		{
+			"key": "market_information_packet",
+			"name": "Market information packet",
+			"description": "Load-in times, location and rules for a market weekend.",
+			"category": "operational",
+			"mode": "off",
+			"is_active": true,
+			"subject_template": "Your information packet for {market_name}",
+			"html_template": "<p>Hi {vendor_name},</p><p>Here is the information packet for {market_name} ({market_dates}): load-in times, location and market rules.</p><p>{owner_name}<br>The Good Flea</p>",
+			"text_template": "Hi {vendor_name},\n\nHere is the information packet for {market_name} ({market_dates}): load-in times, location and market rules.\n\n{owner_name}\nThe Good Flea",
+			"allowed_variables": [
+				"vendor_name",
+				"market_name",
+				"market_dates",
+				"owner_name"
+			],
+			"available_variables": {
+				"vendor_name": "The vendor's brand name.",
+				"application_reference": "Short reference for the application, e.g. APP-1A2B3C4D.",
+				"market_name": "The market weekend label, e.g. \"Oct 10 & 11\".",
+				"market_dates": "The market weekend dates, e.g. \"Oct 10 \u2013 11, 2026\".",
+				"booth_name": "The booth (or add-on) a decision is about, e.g. \"8ft x 8ft\".",
+				"owner_name": "The team member who looks after the vendor, or \"The Good Flea team\".",
+				"payment_link": "A payment link (https). Only available once invoicing exists."
+			},
+			"updated_by": null,
+			"updated_at": "2026-10-15T15:04:10.124413Z"
+		},
+		{
+			"key": "market_preparation",
+			"name": "Market preparation",
+			"description": "Reminder before a market weekend the vendor is booked for.",
+			"category": "operational",
+			"mode": "off",
+			"is_active": true,
+			"subject_template": "Getting ready for {market_name}",
+			"html_template": "<p>Hi {vendor_name},</p><p>{market_name} is coming up on {market_dates}. Here is what to prepare before you arrive.</p><p>{owner_name}<br>The Good Flea</p>",
+			"text_template": "Hi {vendor_name},\n\n{market_name} is coming up on {market_dates}. Here is what to prepare before you arrive.\n\n{owner_name}\nThe Good Flea",
+			"allowed_variables": [
+				"vendor_name",
+				"market_name",
+				"market_dates",
+				"owner_name"
+			],
+			"available_variables": {
+				"vendor_name": "The vendor's brand name.",
+				"application_reference": "Short reference for the application, e.g. APP-1A2B3C4D.",
+				"market_name": "The market weekend label, e.g. \"Oct 10 & 11\".",
+				"market_dates": "The market weekend dates, e.g. \"Oct 10 \u2013 11, 2026\".",
+				"booth_name": "The booth (or add-on) a decision is about, e.g. \"8ft x 8ft\".",
+				"owner_name": "The team member who looks after the vendor, or \"The Good Flea team\".",
+				"payment_link": "A payment link (https). Only available once invoicing exists."
+			},
+			"updated_by": null,
+			"updated_at": "2026-10-15T15:04:10.119132Z"
+		},
+		{
+			"key": "post_market_follow_up",
+			"name": "Post-market follow-up",
+			"description": "Thanks and feedback request after a market weekend.",
+			"category": "operational",
+			"mode": "off",
+			"is_active": true,
+			"subject_template": "Thanks for joining {market_name}",
+			"html_template": "<p>Hi {vendor_name},</p><p>Thank you for being part of {market_name}. We would love to hear how it went for you.</p><p>{owner_name}<br>The Good Flea</p>",
+			"text_template": "Hi {vendor_name},\n\nThank you for being part of {market_name}. We would love to hear how it went for you.\n\n{owner_name}\nThe Good Flea",
+			"allowed_variables": [
+				"vendor_name",
+				"market_name",
+				"owner_name"
+			],
+			"available_variables": {
+				"vendor_name": "The vendor's brand name.",
+				"application_reference": "Short reference for the application, e.g. APP-1A2B3C4D.",
+				"market_name": "The market weekend label, e.g. \"Oct 10 & 11\".",
+				"market_dates": "The market weekend dates, e.g. \"Oct 10 \u2013 11, 2026\".",
+				"booth_name": "The booth (or add-on) a decision is about, e.g. \"8ft x 8ft\".",
+				"owner_name": "The team member who looks after the vendor, or \"The Good Flea team\".",
+				"payment_link": "A payment link (https). Only available once invoicing exists."
+			},
+			"updated_by": null,
+			"updated_at": "2026-10-15T15:04:10.129289Z"
+		},
+		{
+			"key": "application_declined",
+			"name": "Application declined",
+			"description": "The application was declined.",
+			"category": "transactional",
+			"mode": "draft",
+			"is_active": true,
+			"subject_template": "Your application to The Good Flea",
+			"html_template": "<p>Hi {vendor_name},</p><p>Thank you for applying (reference {application_reference}). We are not able to offer you a booth this time.</p><p>{owner_name}<br>The Good Flea</p>",
+			"text_template": "Hi {vendor_name},\n\nThank you for applying (reference {application_reference}). We are not able to offer you a booth this time.\n\n{owner_name}\nThe Good Flea",
+			"allowed_variables": [
+				"vendor_name",
+				"application_reference",
+				"owner_name"
+			],
+			"available_variables": {
+				"vendor_name": "The vendor's brand name.",
+				"application_reference": "Short reference for the application, e.g. APP-1A2B3C4D.",
+				"market_name": "The market weekend label, e.g. \"Oct 10 & 11\".",
+				"market_dates": "The market weekend dates, e.g. \"Oct 10 \u2013 11, 2026\".",
+				"booth_name": "The booth (or add-on) a decision is about, e.g. \"8ft x 8ft\".",
+				"owner_name": "The team member who looks after the vendor, or \"The Good Flea team\".",
+				"payment_link": "A payment link (https). Only available once invoicing exists."
+			},
+			"updated_by": null,
+			"updated_at": "2026-10-15T15:04:10.113337Z"
+		},
+		{
+			"key": "application_received",
+			"name": "Application received",
+			"description": "Confirms a new application (reference included).",
+			"category": "transactional",
+			"mode": "draft",
+			"is_active": true,
+			"subject_template": "We received your application, {vendor_name}",
+			"html_template": "<p>Hi {vendor_name},</p><p>Thanks for applying to The Good Flea. Your reference is <strong>{application_reference}</strong>. We will call you shortly to talk about your booth.</p><p>{owner_name}<br>The Good Flea</p>",
+			"text_template": "Hi {vendor_name},\n\nThanks for applying to The Good Flea. Your reference is {application_reference}. We will call you shortly to talk about your booth.\n\n{owner_name}\nThe Good Flea",
+			"allowed_variables": [
+				"vendor_name",
+				"application_reference",
+				"owner_name"
+			],
+			"available_variables": {
+				"vendor_name": "The vendor's brand name.",
+				"application_reference": "Short reference for the application, e.g. APP-1A2B3C4D.",
+				"market_name": "The market weekend label, e.g. \"Oct 10 & 11\".",
+				"market_dates": "The market weekend dates, e.g. \"Oct 10 \u2013 11, 2026\".",
+				"booth_name": "The booth (or add-on) a decision is about, e.g. \"8ft x 8ft\".",
+				"owner_name": "The team member who looks after the vendor, or \"The Good Flea team\".",
+				"payment_link": "A payment link (https). Only available once invoicing exists."
+			},
+			"updated_by": null,
+			"updated_at": "2026-10-15T15:04:10.091281Z"
+		},
+		{
+			"key": "invoice_sent",
+			"name": "Invoice sent",
+			"description": "Catalog entry only: wired when invoicing exists. Not used by the interim billing action.",
+			"category": "transactional",
+			"mode": "off",
+			"is_active": true,
+			"subject_template": "Your invoice from The Good Flea ({application_reference})",
+			"html_template": "<p>Hi {vendor_name},</p><p>Your invoice for {application_reference} is ready. <a href=\"{payment_link}\">Pay your invoice</a>.</p><p>{owner_name}<br>The Good Flea</p>",
+			"text_template": "Hi {vendor_name},\n\nYour invoice for {application_reference} is ready. Pay here: {payment_link}\n\n{owner_name}\nThe Good Flea",
+			"allowed_variables": [
+				"vendor_name",
+				"application_reference",
+				"payment_link",
+				"owner_name"
+			],
+			"available_variables": {
+				"vendor_name": "The vendor's brand name.",
+				"application_reference": "Short reference for the application, e.g. APP-1A2B3C4D.",
+				"market_name": "The market weekend label, e.g. \"Oct 10 & 11\".",
+				"market_dates": "The market weekend dates, e.g. \"Oct 10 \u2013 11, 2026\".",
+				"booth_name": "The booth (or add-on) a decision is about, e.g. \"8ft x 8ft\".",
+				"owner_name": "The team member who looks after the vendor, or \"The Good Flea team\".",
+				"payment_link": "A payment link (https). Only available once invoicing exists."
+			},
+			"updated_by": null,
+			"updated_at": "2026-10-15T15:04:10.134727Z"
+		},
+		{
+			"key": "payment_received",
+			"name": "Payment received",
+			"description": "Catalog entry only: wired when payments are recorded from the payment provider.",
+			"category": "transactional",
+			"mode": "off",
+			"is_active": true,
+			"subject_template": "Payment received, thank you ({application_reference})",
+			"html_template": "<p>Hi {vendor_name},</p><p>We received your payment for {application_reference}. Your booth is booked.</p><p>{owner_name}<br>The Good Flea</p>",
+			"text_template": "Hi {vendor_name},\n\nWe received your payment for {application_reference}. Your booth is booked.\n\n{owner_name}\nThe Good Flea",
+			"allowed_variables": [
+				"vendor_name",
+				"application_reference",
+				"owner_name"
+			],
+			"available_variables": {
+				"vendor_name": "The vendor's brand name.",
+				"application_reference": "Short reference for the application, e.g. APP-1A2B3C4D.",
+				"market_name": "The market weekend label, e.g. \"Oct 10 & 11\".",
+				"market_dates": "The market weekend dates, e.g. \"Oct 10 \u2013 11, 2026\".",
+				"booth_name": "The booth (or add-on) a decision is about, e.g. \"8ft x 8ft\".",
+				"owner_name": "The team member who looks after the vendor, or \"The Good Flea team\".",
+				"payment_link": "A payment link (https). Only available once invoicing exists."
+			},
+			"updated_by": null,
+			"updated_at": "2026-10-15T15:04:10.145079Z"
+		},
+		{
+			"key": "payment_reminder",
+			"name": "Payment reminder",
+			"description": "Catalog entry only: wired when invoicing exists. Needs an \"unpaid\" stop condition.",
+			"category": "transactional",
+			"mode": "off",
+			"is_active": true,
+			"subject_template": "Reminder: your invoice for {application_reference}",
+			"html_template": "<p>Hi {vendor_name},</p><p>A reminder that your invoice for {application_reference} is still open. <a href=\"{payment_link}\">Pay your invoice</a>.</p><p>{owner_name}<br>The Good Flea</p>",
+			"text_template": "Hi {vendor_name},\n\nA reminder that your invoice for {application_reference} is still open. Pay here: {payment_link}\n\n{owner_name}\nThe Good Flea",
+			"allowed_variables": [
+				"vendor_name",
+				"application_reference",
+				"payment_link",
+				"owner_name"
+			],
+			"available_variables": {
+				"vendor_name": "The vendor's brand name.",
+				"application_reference": "Short reference for the application, e.g. APP-1A2B3C4D.",
+				"market_name": "The market weekend label, e.g. \"Oct 10 & 11\".",
+				"market_dates": "The market weekend dates, e.g. \"Oct 10 \u2013 11, 2026\".",
+				"booth_name": "The booth (or add-on) a decision is about, e.g. \"8ft x 8ft\".",
+				"owner_name": "The team member who looks after the vendor, or \"The Good Flea team\".",
+				"payment_link": "A payment link (https). Only available once invoicing exists."
+			},
+			"updated_by": null,
+			"updated_at": "2026-10-15T15:04:10.139819Z"
+		},
+		{
+			"key": "waitlist_update",
+			"name": "Waitlist update",
+			"description": "A requested booth is waitlisted for a weekend.",
+			"category": "transactional",
+			"mode": "draft",
+			"is_active": true,
+			"subject_template": "Waitlist update for {market_name}: {booth_name}",
+			"html_template": "<p>Hi {vendor_name},</p><p>The <strong>{booth_name}</strong> booth you asked for at {market_name} ({market_dates}) is full, so we have added that booth to the waitlist (reference {application_reference}). Any other booths you requested are not affected. We will let you know if a spot opens up.</p><p>{owner_name}<br>The Good Flea</p>",
+			"text_template": "Hi {vendor_name},\n\nThe {booth_name} booth you asked for at {market_name} ({market_dates}) is full, so we have added that booth to the waitlist (reference {application_reference}). Any other booths you requested are not affected. We will let you know if a spot opens up.\n\n{owner_name}\nThe Good Flea",
+			"allowed_variables": [
+				"vendor_name",
+				"application_reference",
+				"market_name",
+				"market_dates",
+				"owner_name",
+				"booth_name"
+			],
+			"available_variables": {
+				"vendor_name": "The vendor's brand name.",
+				"application_reference": "Short reference for the application, e.g. APP-1A2B3C4D.",
+				"market_name": "The market weekend label, e.g. \"Oct 10 & 11\".",
+				"market_dates": "The market weekend dates, e.g. \"Oct 10 \u2013 11, 2026\".",
+				"booth_name": "The booth (or add-on) a decision is about, e.g. \"8ft x 8ft\".",
+				"owner_name": "The team member who looks after the vendor, or \"The Good Flea team\".",
+				"payment_link": "A payment link (https). Only available once invoicing exists."
+			},
+			"updated_by": null,
+			"updated_at": "2026-10-16T12:44:38.911327Z"
+		}
+	],
+	"template_preview_sample": {
+		"subject": "We received your application, Sample Vendor Co.",
+		"html_body": "<p>Hi Sample Vendor Co.,</p><p>Thanks for applying to The Good Flea. Your reference is <strong>APP-SAMPLE01</strong>. We will call you shortly to talk about your booth.</p><p>The Good Flea team<br>The Good Flea</p>",
+		"text_body": "Hi Sample Vendor Co.,\n\nThanks for applying to The Good Flea. Your reference is APP-SAMPLE01. We will call you shortly to talk about your booth.\n\nThe Good Flea team\nThe Good Flea",
+		"data_source": "sample",
+		"missing_variables": []
+	},
+	"template_preview_application": {
+		"subject": "Waitlist update for Oct 10 & 11: 8ft x 8ft",
+		"html_body": "<p>Hi Example Ceramics,</p><p>The <strong>8ft x 8ft</strong> booth you asked for at Oct 10 &amp; 11 (Oct 10 \u2013 11, 2026) is full, so we have added that booth to the waitlist (reference APP-AF1A91EF). Any other booths you requested are not affected. We will let you know if a spot opens up.</p><p>The Good Flea team<br>The Good Flea</p>",
+		"text_body": "Hi Example Ceramics,\n\nThe 8ft x 8ft booth you asked for at Oct 10 & 11 (Oct 10 \u2013 11, 2026) is full, so we have added that booth to the waitlist (reference APP-AF1A91EF). Any other booths you requested are not affected. We will let you know if a spot opens up.\n\nThe Good Flea team\nThe Good Flea",
+		"data_source": "application",
+		"missing_variables": []
+	},
+	"template_preview_missing": {
+		"subject": "Waitlist update for [market_name]: [booth_name]",
+		"html_body": "<p>Hi Example Ceramics,</p><p>The <strong>[booth_name]</strong> booth you asked for at [market_name] ([market_dates]) is full, so we have added that booth to the waitlist (reference APP-AF1A91EF). Any other booths you requested are not affected. We will let you know if a spot opens up.</p><p>The Good Flea team<br>The Good Flea</p>",
+		"text_body": "Hi Example Ceramics,\n\nThe [booth_name] booth you asked for at [market_name] ([market_dates]) is full, so we have added that booth to the waitlist (reference APP-AF1A91EF). Any other booths you requested are not affected. We will let you know if a spot opens up.\n\nThe Good Flea team\nThe Good Flea",
+		"data_source": "application",
+		"missing_variables": [
+			"booth_name",
+			"market_dates",
+			"market_name"
+		]
+	},
+	"template_patch_invalid": {
+		"subject_template": [
+			"Unknown placeholder(s): {secret}."
+		]
+	},
+	"template_patch_forbidden": {
+		"detail": "Only administrators can change this."
+	}
+}

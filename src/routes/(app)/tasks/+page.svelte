@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import AsyncState from '#lib/components/AsyncState.svelte';
 	import type { Page, Query } from '#lib/api.ts';
+	import { reviewTaskHref } from '#lib/emails.ts';
 	import { formatDateTime } from '#lib/format.ts';
 	import { Resource } from '#lib/resource.svelte.ts';
 	import { session } from '#lib/session.svelte.ts';
@@ -13,13 +14,15 @@
 		{ key: 'mine', label: 'My Tasks', query: { owner: 'me' }, empty: 'Nothing assigned to you.' },
 		{ key: 'calls', label: 'Calls', query: { task_type: 'DISCOVERY_CALL' }, empty: 'No discovery calls.' },
 		{ key: 'reviews', label: 'Application Reviews', query: { task_type: 'APPLICATION_REVIEW' }, empty: 'No applications to review.' },
+		{ key: 'emails', label: 'Email Reviews', query: { task_type: 'EMAIL_REVIEW' }, empty: 'No emails are waiting for review.' },
 		{ key: 'queue', label: 'Team Queue', query: { owner: 'none' }, empty: 'The team queue is empty.' }
 	];
 
 	const typeLabels: Record<TaskType, string> = {
 		DISCOVERY_CALL: 'Discovery call',
 		APPLICATION_REVIEW: 'Application review',
-		FOLLOW_UP: 'Follow-up'
+		FOLLOW_UP: 'Follow-up',
+		EMAIL_REVIEW: 'Email review'
 	};
 	const statusLabels: Record<TaskStatus, string> = {
 		TODO: 'To do',
@@ -60,7 +63,8 @@
 
 	const overdue = (task: Task) => task.isOpen && task.dueAt !== null && new Date(task.dueAt).getTime() < Date.now();
 	/** Tasks open on their application when they belong to one, otherwise on the vendor. */
-	const taskHref = (task: Task) => (task.applicationId ? `/applications/${task.applicationId}` : `/vendors/${task.vendor.id}`);
+	const taskHref = (task: Task) =>
+		task.taskType === 'EMAIL_REVIEW' ? reviewTaskHref(task) : task.applicationId ? `/applications/${task.applicationId}` : `/vendors/${task.vendor.id}`;
 	const canAct = (task: Task) => session.isAdmin || task.owner === null || task.owner.id === session.user?.id;
 
 	async function change(task: Task, patch: Parameters<typeof updateTask>[1]) {
@@ -154,7 +158,11 @@
 													Claim
 												</button>
 											{/if}
-											{#if task.isOpen && canAct(task)}
+											{#if task.isOpen && task.taskType === 'EMAIL_REVIEW'}
+												<!-- Closed only by approving or cancelling the email (the API refuses a plain Complete);
+												     anyone can open it, and the email shows who may approve. -->
+												<a href={reviewTaskHref(task)} class="btn btn-xs btn-primary">Review email</a>
+											{:else if task.isOpen && canAct(task)}
 												{#if task.taskType === 'DISCOVERY_CALL' || task.taskType === 'FOLLOW_UP'}
 													<a href={`${taskHref(task)}#call`} class="btn btn-xs btn-primary">Log call</a>
 												{/if}
