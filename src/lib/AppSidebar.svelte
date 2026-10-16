@@ -22,11 +22,11 @@
       <!-- Top Section: Brand & Navigation Menu -->
       <div>
         <!-- Brand Header -->
-        <div class="p-5 border-b border-base-200 flex items-center justify-between">
+        <div class="p-5 border-b border-base-200 flex items-center">
           <div class="flex items-center gap-3">
             
             <div>
-              <h2 class="font-semibold text-sm text-base-content leading-tight">Vendor Ops <span class="text-xs font-light text-base-content/50">| v1.3.0</span></h2>
+              <h2 class="font-semibold text-sm text-base-content leading-tight">Vendor Ops <span class="text-xs font-light text-base-content/50">| v1.3.1</span></h2>
             </div>
           </div>
         </div>
