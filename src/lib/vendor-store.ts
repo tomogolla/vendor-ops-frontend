@@ -124,7 +124,8 @@ export type CallInput = {
 	details: CallDetails;
 };
 
-export type TaskType = 'DISCOVERY_CALL' | 'APPLICATION_REVIEW' | 'FOLLOW_UP';
+/** EMAIL_REVIEW tasks are created with an email draft and closed only by approving or cancelling it. */
+export type TaskType = 'DISCOVERY_CALL' | 'APPLICATION_REVIEW' | 'FOLLOW_UP' | 'EMAIL_REVIEW';
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'NO_ANSWER' | 'RESCHEDULED' | 'CANCELLED';
 export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 
