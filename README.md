@@ -20,7 +20,8 @@ Django + Django REST Framework (../backend, separate repo)  ──  PostgreSQL
   header, typed errors, 401 → login). API client layers map snake_case payloads to camelCase types:
   `src/lib/applications.ts` (applications, lines, stages, billing placeholders, summary),
   `src/lib/catalog.ts` (market weekends, booth variants, add-ons, capacity) and
-  `src/lib/vendor-store.ts` (vendors, tasks, activity, notes, CSV imports). Pure rules the UI relies on
+  `src/lib/vendor-store.ts` (vendors, tasks, activity, notes, CSV imports) and `src/lib/emails.ts` (vendor
+  email: messages, drafts, templates, settings, overview). Pure rules the UI relies on
   (board grouping, days in stage, which stage and line actions a role may take, capacity display,
   totals rows) live in those modules and are unit-tested against payloads captured from the backend
   (`src/lib/fixtures/`). No vendor data is kept in browser storage.
@@ -41,7 +42,7 @@ Django + Django REST Framework (../backend, separate repo)  ──  PostgreSQL
 | Application | The pipeline card and the order. **Stage**: New → In review → Awaiting payment → Won, plus Declined and Withdrawn (provisional, shown collapsed). Holds the order discount, billed and first-paid dates, and server-computed totals. |
 | ApplicationLine | A booth variant of a market weekend, or an add-on attached to a booth line. Status: requested, confirmed, waitlisted, declined, cancelled. The unit price is a snapshot. |
 | MarketWeekend, BoothVariant, AddOn | What is sold. Variants have a capacity; add-ons may. Only confirmed lines use capacity, and they hold it until released. |
-| Task | `DISCOVERY_CALL`, `APPLICATION_REVIEW`, `FOLLOW_UP`, linked to the vendor and usually an application. |
+| Task | `DISCOVERY_CALL`, `APPLICATION_REVIEW`, `FOLLOW_UP` and `EMAIL_REVIEW` (created with an email draft), linked to the vendor and usually an application. |
 | ActivityEvent | Append-only vendor timeline; events can belong to an application. |
 | InternalNote, LeadIntakeEvent, ImportBatch | Notes, how a vendor entered, and CSV imports. |
 
@@ -62,18 +63,20 @@ Django + Django REST Framework (../backend, separate repo)  ──  PostgreSQL
 
 ## Routes and menu
 
-The menu (Overview, Applications, Vendors, Market weekends, Tasks, Finance) is defined once in
+The menu (Overview, Applications, Vendors, Market weekends, Tasks, Finance, Settings) is defined once in
 `src/lib/nav.ts` and rendered by both the sidebar and the mobile dropdown.
 
 | Route | What it is |
 | --- | --- |
-| `/` | Overview: calls due, applications imported from CSV still at New, stage counts, oldest awaiting payment, capacity alerts. |
+| `/` | Overview: calls due, applications imported from CSV still at New, stage counts, oldest awaiting payment, capacity alerts, vendor email counts and recent email activity. |
 | `/applications` | Board of applications by stage (New, In review, Awaiting payment, Won, collapsed Closed), with a table view. Filters live in the query string (`source`, `owner`, `waitlisted`, `call`, `view`, `stage`, `page`). No drag-and-drop: stage changes go through the application page. |
 | `/applications/new` | New application: vendor details (with duplicate warnings), order lines from the catalog, source, notes, discount (administrators) and an optional first call. |
-| `/applications/[id]` | Application: totals, order lines and line decisions, call actions, stage actions, vendor timeline and notes. |
+| `/applications/[id]` | Application: totals, order lines and line decisions, call actions, stage actions, vendor timeline and notes. **Emails** tab (`?tab=emails`, `&email=<id>` opens one, `&task=<review task id>` opens that task's email): history, details, draft editing with earlier versions, approve, cancel, New email. |
 | `/vendors`, `/vendors/[id]`, `/vendors/[id]/edit` | Vendors by label with search; vendor overview, applications, bookings, compliance, timeline, notes; Suspend / Reinstate (administrators). |
 | `/market-weekends`, `/market-weekends/new`, `/market-weekends/[id]`, `/market-weekends/[id]/edit` | Weekends with capacity bars; booked vendors and the waitlist with promotion suggestions; weekend, variant and add-on editing (administrators). |
-| `/tasks` | Task Center; tasks open on their application when they have one. |
+| `/tasks` | Task Center; tasks open on their application when they have one. Email review tasks (Email Reviews view) have **Review email** instead of Complete: they close when the email is approved or cancelled. |
+| `/settings/emails` | Settings → Emails: sending status (chosen vs effective mode), template list, and the message log (`?tab=sending|templates|messages`, `&bucket=` filter). `/settings` redirects here. |
+| `/settings/emails/templates/[key]` | Template editor (administrators; others can view and preview): subject, HTML and text, mode, allowed variables, preview with sample or real data. |
 | `/finance` | Placeholder until invoices, payments and payers arrive. |
 | `/customers`, `/payments` | Mock pages, not in the menu (`TODO(finance)`). |
 
@@ -182,10 +185,34 @@ The backend README is the reference; these are the endpoints this frontend uses.
 | `vendors/{id}/`, `vendors/{id}/activity/`, `vendors/{id}/notes/`, `vendors/duplicates/` | GET, PATCH, POST | Profile, timeline, notes, duplicate check. |
 | `vendors/{id}/status/` | POST | Deprecated; used only for Suspend (`suspended`) and Reinstate (`approved`). |
 | `tasks/`, `tasks/{id}/`, `tasks/{id}/log-call/` | GET, POST, PATCH | Filters include `application`, `task_type`, `is_open`, `owner`, `due_before`. |
+| `email/settings/` | GET, PATCH | Stored and effective sending settings; never credentials. PATCH: administrators. |
+| `email/templates/`, `email/templates/{key}/`, `.../preview/` | GET, PATCH, POST | PATCH: administrators. Preview renders unsaved edits with sample or application data; it saves nothing. |
+| `email/messages/`, `email/messages/{id}/`, `.../revisions/`, `.../approve/`, `.../cancel/` | GET, PATCH, POST | Filters: `application`, `template`, `status`, `bucket`, `search`, `ordering`. PATCH edits a draft. Approve/cancel: administrators, the review task's owner, the application's reviewer. |
+| `applications/{id}/emails/` | GET, POST | The application's emails; POST prepares a draft by hand. |
+| `email/overview/` | GET | Counts per bucket (each email once) and recent email activity. |
 | `imports/vendors/preview/`, `imports/vendors/confirm/` | POST (multipart `file`) | Administrators; every row becomes an application at New. |
 
 Lists are paginated (`page`, `page_size` up to 500) and return `{count, next, previous, results}`.
 Unauthenticated requests get 401; forbidden ones 403.
+
+## Vendor email (Slice 2)
+
+Django prepares, schedules and sends every email; this frontend only shows them and calls the API to
+edit, approve, cancel or prepare drafts. The backend contract is `backend/docs/email-frontend-guide.md`.
+
+- **Permissions come from the server.** Each email carries `permissions {can_edit, can_approve,
+  can_cancel}`; buttons follow them (`messageActions` in `src/lib/emails.ts`). A draft that
+  `no_longer_applies` offers only Cancel, because the server refuses to approve it.
+- **Email HTML is untrusted.** It is shown only in `EmailPreviewFrame`: an `<iframe sandbox="">` (no
+  scripts, forms, popups or navigation) whose document also carries a strict Content-Security-Policy.
+  It is never rendered with `{@html}`.
+- **Review tasks** (`EMAIL_REVIEW`) cannot be completed from the Task Center; the API refuses it.
+  Review email opens the application's Emails tab, which finds the email by its `review_task.id`.
+- **Overview counts** use the backend's buckets, so each email is counted once (Sent includes
+  delivered). Failed covers failed, bounced and spam reports.
+- **Tests**: `src/lib/emails.test.ts` (mapping, rules and API calls with a mocked `fetch`) and
+  `src/lib/email-components.test.ts` (components rendered with Svelte's server renderer), both
+  against payloads captured from the backend in `src/lib/fixtures/email-*.json`. No real email is sent.
 
 ## Deployment (DigitalOcean Droplet)
 
