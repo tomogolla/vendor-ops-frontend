@@ -1,0 +1,94 @@
+{
+	"weekends": {
+		"weekends": [
+			{
+				"id": "9cba3fda-8ecb-4216-84d3-c7156656efec",
+				"label": "Oct 17 & 18",
+				"start_date": "2026-10-17",
+				"end_date": "2026-10-18",
+				"variants": [
+					{
+						"name": "8ft x 8ft",
+						"dimensions": "8 x 8 ft",
+						"waitlist": false
+					},
+					{
+						"name": "10ft x 10ft",
+						"dimensions": "10 x 10 ft",
+						"waitlist": false
+					}
+				],
+				"waitlist_only": false
+			},
+			{
+				"id": "fca21a29-8441-47b9-b889-fa0a929687d8",
+				"label": "November 12 & 13",
+				"start_date": "2026-11-12",
+				"end_date": "2026-11-13",
+				"variants": [
+					{
+						"name": "8 x 8ft",
+						"dimensions": "8 x 8ft",
+						"waitlist": false
+					}
+				],
+				"waitlist_only": false
+			}
+		],
+		"booth_sizes": [
+			{
+				"name": "8ft x 8ft",
+				"dimensions": "8 x 8 ft"
+			},
+			{
+				"name": "10ft x 10ft",
+				"dimensions": "10 x 10 ft"
+			},
+			{
+				"name": "8 x 8ft",
+				"dimensions": "8 x 8ft"
+			}
+		]
+	},
+	"received": {
+		"status": "received"
+	},
+	"validation_error": {
+		"email": [
+			"Enter a valid email address."
+		],
+		"instagram": [
+			"Enter your Instagram handle (letters, numbers, dots and underscores, up to 30 characters) or profile link."
+		],
+		"weekend_ids": [
+			"This list may not be empty."
+		],
+		"consent": [
+			"Please agree to be contacted about your application."
+		]
+	},
+	"email_limit": {
+		"status": 429,
+		"body": {
+			"detail": "We have already received several applications from this email address today. Please try again tomorrow, or email us."
+		}
+	},
+	"not_verified": {
+		"status": 400,
+		"body": {
+			"detail": "We could not verify that you are not a robot. Please try again."
+		}
+	},
+	"unavailable": {
+		"status": 503,
+		"body": {
+			"detail": "Applications are temporarily unavailable. Please try again later, or email us."
+		}
+	},
+	"closed": {
+		"status": 404,
+		"body": {
+			"detail": "Not found."
+		}
+	}
+}
