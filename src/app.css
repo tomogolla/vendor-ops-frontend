@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Tailwind/DaisyUI directives are valid PostCSS at-rules. */
+/* stylelint-disable at-rule-no-unknown */
 @plugin "daisyui";
 
 
@@ -7,6 +9,20 @@
   default: true;
   prefersdark: false;
   color-scheme: "light";
+
+}
+/* stylelint-enable at-rule-no-unknown */
+
+
+
+:root {
+  --brand-color: #35b2b2;
+  --brand-color-dark: #258b8b;
+  --brand-color-soft: rgba(53, 178, 178, 0.12);
+  --brand-color-border: rgba(53, 178, 178, 0.28);
+  --base-100: #FFFAFF;
+  --base-200: #e0e0e0;
+  --base-300: #d0d0d0;
   --color-base-100: oklch(98% 0.002 247.839);
   --color-base-200: oklch(96% 0.003 264.542);
   --color-base-300: oklch(92% 0.006 264.531);
@@ -35,18 +51,6 @@
   --border: 1px;
   --depth: 0;
   --noise: 0;
-}
-
-
-
-:root {
-  --brand-color: #35b2b2;
-  --brand-color-dark: #258b8b;
-  --brand-color-soft: rgba(53, 178, 178, 0.12);
-  --brand-color-border: rgba(53, 178, 178, 0.28);
-  --base-100: #FFFAFF;
-  --base-200: #e0e0e0;
-  --base-300: #d0d0d0;
 }
 
 
