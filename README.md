@@ -78,6 +78,7 @@ The menu (Overview, Applications, Vendors, Market weekends, Tasks, Finance, Sett
 | `/settings/emails` | Settings → Emails: sending status (chosen vs effective mode), template list, and the message log (`?tab=sending|templates|messages`, `&bucket=` filter). `/settings` redirects here. |
 | `/settings/emails/templates/[key]` | Template editor (administrators; others can view and preview): subject, HTML and text, mode, allowed variables, preview with sample or real data. |
 | `/finance` | Placeholder until invoices, payments and payers arrive. |
+| `/apply` | **Public** vendor application form (no login; outside the `(app)` group, no menu). Calls only `/api/v1/public/`; see *Public application form*. |
 | `/customers`, `/payments` | Mock pages, not in the menu (`TODO(finance)`). |
 
 ## Local development
@@ -213,6 +214,35 @@ edit, approve, cancel or prepare drafts. The backend contract is `backend/docs/e
 - **Tests**: `src/lib/emails.test.ts` (mapping, rules and API calls with a mocked `fetch`) and
   `src/lib/email-components.test.ts` (components rendered with Svelte's server renderer), both
   against payloads captured from the backend in `src/lib/fixtures/email-*.json`. No real email is sent.
+
+## Public application form (`/apply`)
+
+The vendor-facing page at **https://ops.thegoodflea.com/apply** (also the ads landing page). It sits
+outside the `(app)` route group, so it never loads the staff session or menu.
+
+- **Public endpoints only**: `src/lib/public-application.ts` calls `GET /api/v1/public/market-weekends/`
+  and `POST /api/v1/public/applications/` with `credentials: 'omit'` (no cookies, no CSRF token). It
+  never uses the staff API client, so a signed-in team member's session is never sent from this page.
+- **Cloudflare Turnstile** (`src/lib/turnstile.ts`, `TurnstileWidget.svelte`): explicit rendering with
+  the public site key from `VITE_TURNSTILE_SITE_KEY` and the action `apply`, which Django checks
+  together with the hostname. The widget mode (**Managed**) is chosen on the widget in the Cloudflare
+  dashboard. The token is sent as `turnstile_token`; the secret key exists only on the backend.
+- **Failures keep the answers**: every refusal (field errors, failed verification, rate limits,
+  temporary outages) leaves the form filled in and resets the widget, because a token can be verified
+  only once; the applicant completes the check again and resends. Without a site key the page says the
+  form is unavailable and cannot be sent; it never submits without a token.
+- **Server rules stay on the server**: the page repeats the basic field checks for quick feedback,
+  but Django validates everything again, rate-limits, deduplicates (a repeat applicant is bundled into
+  the open application) and answers `{"status": "received"}` the same way for everyone.
+- A hidden honeypot field (`website`) catches simple bots; UTM tags, click ids, the referrer and the
+  landing path are sent as `attribution`. No IP address or other tracking is collected in the browser.
+- **Local development**: `.env.example` uses Cloudflare's always-pass test site key
+  `1x00000000000000000000AA`; pair it with the backend test secret
+  `1x0000000000000000000000000000000AA` and `PUBLIC_APPLICATIONS_ENABLED=true`. Tests mock the API
+  and use only Cloudflare's test keys (`src/lib/public-application*.test.ts`, fixtures captured from the
+  backend in `src/lib/fixtures/public-application.json`).
+- **Production build**: set `VITE_TURNSTILE_SITE_KEY` for `npm run build` (the backend repository's
+  DEPLOYMENT.md, "Public application form", has the steps, including the CI variable).
 
 ## Deployment (DigitalOcean Droplet)
 
