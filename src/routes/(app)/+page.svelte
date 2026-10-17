@@ -2,6 +2,7 @@
 	import { BOARD_STAGES, countApplications, getSummary, stageLabels, type ApplicationSummary } from '#lib/applications.ts';
 	import { capacityAlerts, listWeekends, type CapacityAlert } from '#lib/catalog.ts';
 	import EmailOverviewCard from '#lib/components/EmailOverviewCard.svelte';
+	import QuickActions from '#lib/components/QuickActions.svelte';
 	import { SETTINGS_EMAILS_HREF, getEmailOverview, getEmailSettings, type EmailOverview } from '#lib/emails.ts';
 	import { formatDateTime } from '#lib/format.ts';
 	import { countTasks, listTasks, type Task } from '#lib/vendor-store.ts';
@@ -74,7 +75,17 @@
 {#snippet retry(error: string, again: () => void)}
 	<p role="alert" class="text-xs text-error">{error} <button type="button" class="link" onclick={again}>Retry</button></p>
 {/snippet}
-
+<div class="grid grid-cols-1 gap-2 md:grid-cols-2 mb-4">
+	<div class="flex flex-col gap-2">
+		<section>
+			<p class="text-xs">Summary</p>
+		</section>
+	</div>
+	<div>
+		<QuickActions />
+		
+	</div>
+</div>
 <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
 	<div class="flex flex-col gap-2">
 		<section class="card card-xs bg-base-100 border border-base-200 shadow-sm" aria-labelledby="calls-heading">
@@ -173,6 +184,24 @@
 	</div>
 
 	<div class="flex flex-col gap-2">
+		
+
+		<section class="card card-xs bg-base-100 border border-base-200 shadow-sm" aria-labelledby="emails-heading">
+			<div class="card-body">
+				<h2 id="emails-heading" class="card-title">Vendor emails</h2>
+				{#if emailsError}
+					{@render retry(emailsError, loadEmails)}
+				{:else if !emails}
+					<p class="text-xs text-base-content/60">Loading…</p>
+				{:else}
+					<EmailOverviewCard overview={emails} {liveSendingBlocked} />
+					<div class="card-actions justify-end">
+						<a href="/tasks?view=emails" class="btn btn-xs">Email reviews</a>
+						<a href={`${SETTINGS_EMAILS_HREF}?tab=messages`} class="btn btn-xs">All emails</a>
+					</div>
+				{/if}
+			</div>
+		</section>
 		<section class="card card-xs bg-base-100 border border-base-200 shadow-sm" aria-labelledby="capacity-heading">
 			<div class="card-body">
 				<h2 id="capacity-heading" class="card-title">Capacity alerts</h2>
@@ -198,23 +227,6 @@
 						{/each}
 					</ul>
 					<div class="card-actions justify-end"><a href="/market-weekends" class="btn btn-xs">Market weekends</a></div>
-				{/if}
-			</div>
-		</section>
-
-		<section class="card card-xs bg-base-100 border border-base-200 shadow-sm" aria-labelledby="emails-heading">
-			<div class="card-body">
-				<h2 id="emails-heading" class="card-title">Vendor emails</h2>
-				{#if emailsError}
-					{@render retry(emailsError, loadEmails)}
-				{:else if !emails}
-					<p class="text-xs text-base-content/60">Loading…</p>
-				{:else}
-					<EmailOverviewCard overview={emails} {liveSendingBlocked} />
-					<div class="card-actions justify-end">
-						<a href="/tasks?view=emails" class="btn btn-xs">Email reviews</a>
-						<a href={`${SETTINGS_EMAILS_HREF}?tab=messages`} class="btn btn-xs">All emails</a>
-					</div>
 				{/if}
 			</div>
 		</section>
