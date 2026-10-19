@@ -14,8 +14,8 @@
 	let { title, subtitle, activity, highlightApplicationId }: Props = $props();
 </script>
 
-<div class="card bg-base-100 w-full shadow-sm border border-base-200 overflow-hidden">
-	<div class="card-body gap-3">
+<div class="card bg-base-100 w-full shadow-sm border border-base-200 h-60 overflow-hidden">
+	<div class="card-body gap-3 overflow-y-auto min-h-0 p-4">
 		<div>
 			<h2 class="text-xs font-bold">{title}</h2>
 			{#if subtitle}<p class="text-[11px] text-base-content/60">{subtitle}</p>{/if}

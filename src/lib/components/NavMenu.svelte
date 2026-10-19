@@ -41,7 +41,7 @@
 				<a
 					href={item.href}
 					class={[
-						'flex h-9 items-center gap-2 border-b-2 px-3 text-xs font-medium transition-colors',
+						'flex h-9 items-center gap-2 border-b-2 px-3 text-xs font-regular transition-colors',
 						active
 							? 'border-[#35b2b2] text-[#258b8b]'
 							: 'border-transparent text-neutral-600 hover:border-neutral-300 hover:text-neutral-950'

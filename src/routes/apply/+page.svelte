@@ -24,21 +24,22 @@
 	<meta name="description" content="Apply for a booth at The Good Flea market weekends." />
 </svelte:head>
 
-<main class="min-h-screen bg-base-200 px-4 py-8">
+<main class="min-h-screen bg-[#FBF0DA] px-4 py-8">
 	<div class="mx-auto flex w-full max-w-2xl flex-col gap-4">
 		<header class="flex items-center gap-3">
 			<img src={tgfLogo} alt="" class="h-10 w-10" />
 			<div>
-				<p class="text-sm text-base-content/70">The Good Flea</p>
+				<p class="text-sm text-base-content/70">The Good Flea NYC</p>
 				<h1 class="text-2xl font-bold">Apply for a booth</h1>
+				<a class="text-xs text-[#004aad] underline" href="https://thegoodflea.com">Back to our website</a>
 			</div>
 		</header>
 
-		<div class="card bg-base-100 border border-base-300 shadow-sm">
+		<div class="card bg-[#FBF0DA] border border-base-300 shadow-sm rounded-lg color-[#004aad]">
 			<div class="card-body">
 				{#if received}
 					<div role="status" class="flex flex-col gap-2">
-						<h2 class="text-xl font-semibold">Thank you! We received your application.</h2>
+						<h2 class="text-xl font-semibold color-[#004aad]">Thank you! We received your application.</h2>
 						<p>Our team will review it and get in touch soon, usually by phone or email.</p>
 					</div>
 				{:else if result === null}
