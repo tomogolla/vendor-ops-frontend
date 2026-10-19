@@ -86,8 +86,7 @@
     >
       <nav
         class="navbar flex h-12 min-h-12 items-center justify-between px-4 py-0"
-        aria-label="Main navigation"
-      >
+        aria-label="Main navigation">
 
         <!-- Brand -->
         <div class="navbar-start w-auto">
@@ -112,9 +111,7 @@
           <h2
            
             class="text-xs font-semibold uppercase tracking-wider text-white transition-colors hover:text-neutral-300"
-          >
-            Vendor Ops
-		</h2>
+          >Vendor Ops </h2>
         </div>
 
         <!-- Navigation actions -->
@@ -244,11 +241,11 @@
         </div>
       </nav>
     </header>
-	 <header class="hidden border-b border-neutral-200 bg-white pl-10 text-neutral-900 md:block">
-      <nav class="flex min-h-11 items-center overflow-x-auto px-4 sm:px-6" aria-label="Section navigation">
+	 <header class="hidden px-0 py-2 lg:px-20 lg:py-3 text-neutral-900 md:block">
+      <nav class="flex min-h-11 items-center overflow-x-auto  sm:px-0" aria-label="Section navigation">
         <a
             href="/"
-            class="shrink-0 pr-4 text-sm font-semibold text-[#258b8b]"
+            class="shrink-0 pr-4 text-sm font-semibold text-[#004aad]"
           >
             The Good Flea NYC
           </a>
@@ -260,7 +257,7 @@
     </header>
 
     <!-- Page content -->
-    <main class="flex-1 p-6">
+    <main class="flex-1 px-0 py-2 lg:px-20 lg:py-3">
       {@render children()}
     </main>
 

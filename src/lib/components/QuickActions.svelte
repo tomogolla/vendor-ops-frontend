@@ -24,7 +24,7 @@
 		{#each actions as action (action.label)}
 			<a
 				href={action.href}
-				class="inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-[#35b2b2] transition-colors hover:text-[#004aad] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004aad]"
+				class="inline-flex items-center gap-2 text-xs font-regular tracking-wide text-[#35b2b2] transition-colors hover:text-[#004aad] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004aad]"
 			>
 				{#if action.type === 'create'}
 					<span class="w-2.5 shrink-0 text-center text-base leading-none" aria-hidden="true">+</span>

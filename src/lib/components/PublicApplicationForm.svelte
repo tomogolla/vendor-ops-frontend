@@ -194,7 +194,7 @@
 
 	{#if message}<p role="alert" class="alert alert-error alert-soft text-sm">{message}</p>{/if}
 
-	<button type="submit" class="btn btn-primary w-full sm:w-auto sm:self-start" disabled={submitting || !sitekey}>
+	<button type="submit" class="btn btn-primary w-full sm:w-auto sm:self-start" style="--p: 218 100% 34%; background-color: #004aad; border-color: #004aad;" disabled={submitting || !sitekey}>
 		{#if submitting}<span class="loading loading-spinner loading-sm"></span> Sending…{:else}Send application{/if}
 	</button>
 	<p class="text-xs text-base-content/60">Protected by Cloudflare Turnstile. We only use your details to review your application.</p>
