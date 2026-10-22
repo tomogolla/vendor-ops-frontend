@@ -265,8 +265,8 @@ describe('preparing an email by hand', () => {
 		expect(error.existingMessageId).toBeNull();
 	});
 
-	it('offers the four application templates that are active, in pipeline order', () => {
-		expect(preparableTemplates(templates).map((template) => template.key)).toEqual([...APPLICATION_TEMPLATE_KEYS]);
+	it('offers every active template for a hand-prepared application email', () => {
+		expect(preparableTemplates(templates).map((template) => template.key)).toEqual(templates.map((template) => template.key));
 		const inactive = templates.map((template) => (template.key === 'call_follow_up' ? { ...template, isActive: false } : template));
 		expect(preparableTemplates(inactive).map((template) => template.key)).not.toContain('call_follow_up');
 	});
