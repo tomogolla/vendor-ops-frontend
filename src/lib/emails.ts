@@ -570,11 +570,14 @@ export const APPLICATION_TEMPLATE_KEYS = ['application_received', 'call_follow_u
 /** Templates that need a booth line to say which booth they are about. */
 export const LINE_TEMPLATE_KEYS: readonly string[] = ['waitlist_update'];
 
-/** Templates a person can prepare by hand from an application: the four, when active. */
+/** Any active template can be prepared by hand from an application. The server validates whether
+ * the selected application can supply its variables and whether the email currently applies. */
 export const preparableTemplates = (templates: readonly EmailTemplate[]): EmailTemplate[] =>
-	APPLICATION_TEMPLATE_KEYS.map((key) => templates.find((template) => template.key === key && template.isActive)).filter(
-		(template): template is EmailTemplate => template !== undefined
-	);
+	templates.filter((template) => template.isActive);
+
+/** A booth line supplies both booth and market-weekend context to a hand-prepared email. */
+export const templateNeedsLine = (template: EmailTemplate | undefined): boolean =>
+	Boolean(template?.allowedVariables.some((name) => name === 'booth_name' || name === 'market_name' || name === 'market_dates'));
 
 export type MessageActionKey = 'edit' | 'approve' | 'cancel';
 

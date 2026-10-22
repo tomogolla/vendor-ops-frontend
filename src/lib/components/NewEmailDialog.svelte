@@ -2,10 +2,10 @@
 	import EmailPreviewFrame from '#lib/components/EmailPreviewFrame.svelte';
 	import { lineStatusLabels, type ApplicationLine } from '#lib/applications.ts';
 	import {
-		LINE_TEMPLATE_KEYS,
 		PrepareDraftError,
 		prepareDraft,
 		previewTemplate,
+		templateNeedsLine,
 		templateModeLabels,
 		type EmailMessageDetail,
 		type EmailTemplate,
@@ -39,7 +39,7 @@
 		lines.filter((line) => line.kind === 'booth').sort((a, b) => Number(b.status === 'WAITLISTED') - Number(a.status === 'WAITLISTED'))
 	);
 	const template = $derived(templates.find((item) => item.key === templateKey));
-	const needsLine = $derived(LINE_TEMPLATE_KEYS.includes(templateKey));
+	const needsLine = $derived(templateNeedsLine(template));
 
 	export function open() {
 		templateKey = '';
@@ -72,7 +72,9 @@
 
 	function chooseTemplate(key: string) {
 		templateKey = key;
-		if (LINE_TEMPLATE_KEYS.includes(key) && !lineId) lineId = boothLines.find((line) => line.status === 'WAITLISTED')?.id ?? '';
+		if (templateNeedsLine(templates.find((item) => item.key === key)) && !lineId) {
+			lineId = boothLines.find((line) => line.status === 'WAITLISTED')?.id ?? boothLines[0]?.id ?? '';
+		}
 		loadPreview();
 	}
 
