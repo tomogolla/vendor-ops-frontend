@@ -75,17 +75,7 @@
 {#snippet retry(error: string, again: () => void)}
 	<p role="alert" class="text-xs text-error">{error} <button type="button" class="link" onclick={again}>Retry</button></p>
 {/snippet}
-<div class="grid grid-cols-1 gap-2 md:grid-cols-2 mb-4">
-	<div class="flex flex-col gap-2">
-		<section>
-			<p class="text-xs">Summary</p>
-		</section>
-	</div>
-	<div>
-		<QuickActions />
-		
-	</div>
-</div>
+
 <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
 	<div class="flex flex-col gap-2">
 		<section class="card card-xs bg-base-100 border border-base-200 shadow-sm" aria-labelledby="calls-heading">
